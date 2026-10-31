@@ -28,6 +28,16 @@ Excel 全部服务端生成（excelize）：表头、边框、数字格式、人
 - 桌面端：左侧固定菜单
 - 手机端：侧边栏收起，左上角三横线打开抽屉菜单；弹窗自适应宽度
 
+## 下载
+
+预编译安装包见 [Releases](https://github.com/chunlong-li/jigong/releases)：
+
+| 平台 | 文件 |
+|---|---|
+| Linux x86_64 | `jigong-v1.0.0-linux-amd64.tar.gz` |
+| Linux ARM64 | `jigong-v1.0.0-linux-arm64.tar.gz` |
+| Windows x64 | `jigong-v1.0.0-windows-amd64.zip` |
+
 ## 快速开始
 
 ### 方式一：直接跑二进制
