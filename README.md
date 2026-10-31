@@ -37,6 +37,14 @@ Excel 全部服务端生成（excelize）：表头、边框、数字格式、人
 | Linux x86_64 | `jigong-v1.0.0-linux-amd64.tar.gz` |
 | Linux ARM64 | `jigong-v1.0.0-linux-arm64.tar.gz` |
 | Windows x64 | `jigong-v1.0.0-windows-amd64.zip` |
+| 飞牛 fnOS（x86） | `jigong-v1.0.0-amd64-fnos.fpk` |
+| 飞牛 fnOS（ARM） | `jigong-v1.0.0-arm64-fnos.fpk` |
+| Docker Compose | `jigong-v1.0.0-compose.tar.gz` / `.zip` |
+
+**飞牛 fnOS 安装**：应用中心 → 右上角「手动安装」→ 选 `.fpk`（x86 机器用 amd64，ARM 机器用 arm64）。
+装好后桌面会出现「记工」图标，数据在应用数据目录，卸载不会删数据。
+
+**Docker Compose 安装**：解压 `jigong-v1.0.0-compose.tar.gz`，进目录执行 `docker compose up -d --build`。
 
 ## 快速开始
 

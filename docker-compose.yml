@@ -1,0 +1,30 @@
+# 记工 · Docker Compose（本地构建，不依赖镜像仓库）
+# 用法：
+#   docker compose up -d --build
+#   浏览器打开 http://<本机IP>:8910
+services:
+  jigong:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jigong:latest
+    pull_policy: build
+    container_name: jigong
+    restart: unless-stopped
+    ports:
+      - "8910:8910"
+    environment:
+      - TZ=Asia/Shanghai
+      - JIGONG_PORT=8910
+      - JIGONG_DATA_DIR=/data
+      - JIGONG_WEB_DIR=/app/web
+      - JIGONG_ADMIN_USER=${JIGONG_ADMIN_USER:-admin}
+      - JIGONG_ADMIN_PASSWORD=${JIGONG_ADMIN_PASSWORD:-admin123}
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8910/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

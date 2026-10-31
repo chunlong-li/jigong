@@ -1,0 +1,12 @@
+.git
+node_modules
+web/node_modules
+web/dist
+data
+安装包
+scripts
+docs
+*.log
+*.tar.gz
+*.zip
+*.fpk
