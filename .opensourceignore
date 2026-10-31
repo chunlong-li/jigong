@@ -1,0 +1,8 @@
+data/
+.build-pkg/
+web/node_modules/
+web/dist/
+安装包/
+*.db
+*.db-wal
+*.db-shm

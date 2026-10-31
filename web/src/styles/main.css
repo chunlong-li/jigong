@@ -1,0 +1,374 @@
+:root {
+  --gj-primary: #2f6bff;
+  --gj-bg: #f5f7fb;
+  --gj-sidebar: #101a2e;
+  --gj-sidebar-active: #1e2f52;
+  --gj-text: #1f2937;
+  --gj-muted: #6b7280;
+  --gj-border: #e5e7eb;
+  --el-color-primary: #2f6bff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  color: var(--gj-text);
+  background: var(--gj-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 通用页头 */
+.page {
+  padding: 20px 24px 32px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.page-sub {
+  color: var(--gj-muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--gj-border);
+  padding: 16px;
+}
+
+.card + .card {
+  margin-top: 16px;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.money.pos {
+  color: #0f9d58;
+}
+
+.muted {
+  color: var(--gj-muted);
+}
+
+.table-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: 12px 16px 4px;
+  font-size: 14px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--gj-border);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.stat-label {
+  color: var(--gj-muted);
+  font-size: 13px;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value small {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gj-muted);
+  margin-left: 4px;
+}
+
+/* 登录页 */
+.login-wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 20% 20%, #dfe9ff 0%, #f5f7fb 45%, #eef2ff 100%);
+}
+
+.login-card {
+  width: 380px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 36px 32px 30px;
+  box-shadow: 0 18px 50px rgba(31, 41, 55, 0.12);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.login-logo h1 {
+  margin: 10px 0 4px;
+  font-size: 24px;
+  letter-spacing: 4px;
+}
+
+.login-logo p {
+  margin: 0;
+  color: var(--gj-muted);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.logo-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2f6bff, #6a9bff);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* 侧边栏 */
+.gj-aside {
+  background: var(--gj-sidebar);
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+}
+
+.gj-brand {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 3px;
+  font-size: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.gj-brand .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #4d8bff, #8ab4ff);
+}
+
+.gj-menu {
+  border-right: none !important;
+  background: transparent !important;
+  padding: 10px;
+  flex: 1;
+}
+
+.gj-menu .el-menu-item {
+  color: #a9b6cc;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  height: 46px;
+}
+
+.gj-menu .el-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #fff;
+}
+
+.gj-menu .el-menu-item.is-active {
+  background: var(--gj-sidebar-active) !important;
+  color: #fff !important;
+}
+
+.gj-menu .el-menu-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--gj-primary);
+}
+
+.gj-aside-foot {
+  padding: 14px 20px;
+  font-size: 12px;
+  color: #64748b;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.gj-header {
+  background: #fff;
+  border-bottom: 1px solid var(--gj-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+}
+
+.gj-header-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gj-main {
+  background: var(--gj-bg);
+  overflow-y: auto;
+}
+
+.el-table th.el-table__cell {
+  background: #fafbfe !important;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.el-dialog__body {
+  padding-top: 8px;
+}
+
+.form-tip {
+  color: var(--gj-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.items-table :deep(.el-input__wrapper) {
+  padding: 1px 8px;
+}
+
+/* 抽屉菜单（手机端） */
+.gj-drawer .el-drawer__body {
+  background: var(--gj-sidebar);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gj-drawer .gj-menu {
+  flex: 1;
+}
+
+.gj-drawer .gj-aside-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+  .page {
+    padding: 12px 12px 28px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .page-header {
+    margin-bottom: 12px;
+  }
+
+  .gj-header {
+    padding: 0 10px;
+    height: 54px;
+  }
+
+  .gj-header-title {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gj-user {
+    display: none;
+  }
+
+  /* 弹窗铺满宽度，避免横向溢出 */
+  .el-dialog {
+    width: 94% !important;
+    margin-top: 4vh !important;
+  }
+
+  .el-dialog__body {
+    padding: 10px 12px;
+  }
+
+  /* 工具栏输入框占满一行 */
+  .toolbar {
+    gap: 8px;
+  }
+
+  .toolbar .el-input,
+  .toolbar .el-select,
+  .toolbar .el-date-editor,
+  .toolbar .el-input-number {
+    width: 100% !important;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .table-footer {
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 13px;
+  }
+
+  .card {
+    padding: 12px;
+  }
+}
