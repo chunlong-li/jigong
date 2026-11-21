@@ -5,9 +5,13 @@ set -e
 cd "$(dirname "$0")/.."
 
 VER="${1:-$(cat VERSION 2>/dev/null | tr -d "\n")}"; [ -n "$VER" ] || VER=1.0.0
-OUT="${2:-./安装包}"
+OUT="${2:-/vol1/1000/安装包/jigong}"
 STAGE="$(pwd)/.compose-pkg"
 NAME="jigong-v$VER-compose"
+# 输出目录转绝对路径，避免脚本中途 cd 后相对路径失效
+mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
+
 
 echo "==> 组装 $STAGE"
 rm -rf "$STAGE" && mkdir -p "$STAGE/$NAME"

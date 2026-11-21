@@ -30,21 +30,34 @@ Excel 全部服务端生成（excelize）：表头、边框、数字格式、人
 
 ## 下载
 
-预编译安装包见 [Releases](https://github.com/chunlong-li/jigong/releases)：
+预编译安装包见 [Releases](https://github.com/chunlong-li/jigong/releases)。
+
+| 版本 | 说明 |
+|---|---|
+| `v1.0.0` | 稳定版 |
+| `v1.0.0.1121.1` | 测试版（Pre-release，含在线更新） |
 
 | 平台 | 文件 |
 |---|---|
-| Linux x86_64 | `jigong-v1.1.1-linux-amd64.tar.gz` |
-| Linux ARM64 | `jigong-v1.1.1-linux-arm64.tar.gz` |
-| Windows x64 | `jigong-v1.1.1-windows-amd64.zip` |
-| 飞牛 fnOS（x86） | `jigong-v1.1.1-amd64-fnos.fpk` |
-| 飞牛 fnOS（ARM） | `jigong-v1.1.1-arm64-fnos.fpk` |
-| Docker Compose | `jigong-v1.1.1-compose.tar.gz` / `.zip` |
+| Linux x86_64 | `jigong-v1.0.0-linux-amd64.tar.gz`（测试版同名替换版本号） |
+| Linux ARM64 | `jigong-v1.0.0-linux-arm64.tar.gz` |
+| Windows x64 | `jigong-v1.0.0-windows-amd64.zip` |
+| 飞牛 fnOS（x86） | `jigong-v1.0.0-amd64-fnos.fpk` |
+| 飞牛 fnOS（ARM） | `jigong-v1.0.0-arm64-fnos.fpk` |
+| Docker Compose | `jigong-v1.0.0-compose.tar.gz` / `.zip` |
 
-**飞牛 fnOS 安装**：应用中心 → 右上角「手动安装」→ 选 `.fpk`（x86 机器用 amd64，ARM 机器用 arm64）。
-装好后桌面会出现「记工」图标，数据在应用数据目录，卸载不会删数据。
+**飞牛 fnOS 安装**：应用中心 → 右上角「手动安装」→ 选 `.fpk`（x86 用 amd64，ARM 用 arm64）。
 
-**Docker Compose 安装**：解压 `jigong-v1.1.1-compose.tar.gz`，进目录执行 `docker compose up -d --build`。
+**Docker Compose 安装**：解压 `jigong-v1.0.0-compose.tar.gz`，进目录执行 `docker compose up -d --build`。
+
+## 版本号规则
+
+> 与族谱系统一致，**未经明确要求不升正式版号**。
+
+- **正式版**：只递增第三段（`1.0.0 → 1.0.1`），第二段需明确指定；
+- **测试版**：`<当前正式版>.<出包当天 mmdd>.<n>`，如 `1.0.0.1121.1`（1121 = 11 月 21 日，n 从 1 起）；
+- 测试版在 GitHub 上标为 **Pre-release**，不进 `/releases/latest`；网关 `latest.json` 可以指向测试版（想做灰度时就这么发）；
+- 发下一版前先把 `VERSION` 改回正式版号，避免测试版号被当成正式版往上叠。
 
 ## 在线更新
 
