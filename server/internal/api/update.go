@@ -2,6 +2,7 @@ package api
 
 import (
 	"archive/tar"
+	"crypto/tls"
 	"archive/zip"
 	"compress/gzip"
 	"crypto/sha256"
@@ -42,6 +43,20 @@ type updateInfo struct {
 
 func platformKey() string { return runtime.GOOS + "-" + runtime.GOARCH }
 
+// updateHTTPClient 自有网关用自签名证书，默认对网关域名跳过校验；
+// 可用 JIGONG_UPDATE_INSECURE=0 关掉，或 =1 强制所有源跳过。
+func updateHTTPClient(url string, timeout time.Duration) *http.Client {
+	insecure := strings.Contains(url, "zupu-update.lijiacore.com")
+	if v := strings.TrimSpace(os.Getenv("JIGONG_UPDATE_INSECURE")); v != "" {
+		insecure = v != "0"
+	}
+	c := &http.Client{Timeout: timeout}
+	if insecure {
+		c.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	}
+	return c
+}
+
 func updateSource() string {
 	if v := strings.TrimSpace(os.Getenv("JIGONG_UPDATE_URL")); v != "" {
 		return v
@@ -54,7 +69,7 @@ func updateSource() string {
 func fetchGatewayJSON(url string) (*updateInfo, error) {
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "jigong/"+Version)
-	client := &http.Client{Timeout: 12 * time.Second}
+	client := updateHTTPClient(url, 12*time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -129,7 +144,7 @@ func fetchGitHubLatest() (*updateInfo, error) {
 	req, _ := http.NewRequest("GET", githubReleasesAPI, nil)
 	req.Header.Set("User-Agent", "jigong/"+Version)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := updateHTTPClient(githubReleasesAPI, 15*time.Second)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -319,7 +334,7 @@ func (s *Server) applyUpdate(w http.ResponseWriter, r *http.Request) {
 func downloadFile(url, dest string, wantSize int64, wantSHA string) error {
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "jigong/"+Version)
-	client := &http.Client{Timeout: 10 * time.Minute}
+	client := updateHTTPClient(url, 10*time.Minute)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err

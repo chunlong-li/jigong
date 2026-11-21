@@ -34,35 +34,40 @@ Excel 全部服务端生成（excelize）：表头、边框、数字格式、人
 
 | 平台 | 文件 |
 |---|---|
-| Linux x86_64 | `jigong-v1.1.0-linux-amd64.tar.gz` |
-| Linux ARM64 | `jigong-v1.1.0-linux-arm64.tar.gz` |
-| Windows x64 | `jigong-v1.1.0-windows-amd64.zip` |
-| 飞牛 fnOS（x86） | `jigong-v1.1.0-amd64-fnos.fpk` |
-| 飞牛 fnOS（ARM） | `jigong-v1.1.0-arm64-fnos.fpk` |
-| Docker Compose | `jigong-v1.1.0-compose.tar.gz` / `.zip` |
+| Linux x86_64 | `jigong-v1.1.1-linux-amd64.tar.gz` |
+| Linux ARM64 | `jigong-v1.1.1-linux-arm64.tar.gz` |
+| Windows x64 | `jigong-v1.1.1-windows-amd64.zip` |
+| 飞牛 fnOS（x86） | `jigong-v1.1.1-amd64-fnos.fpk` |
+| 飞牛 fnOS（ARM） | `jigong-v1.1.1-arm64-fnos.fpk` |
+| Docker Compose | `jigong-v1.1.1-compose.tar.gz` / `.zip` |
 
 **飞牛 fnOS 安装**：应用中心 → 右上角「手动安装」→ 选 `.fpk`（x86 机器用 amd64，ARM 机器用 arm64）。
 装好后桌面会出现「记工」图标，数据在应用数据目录，卸载不会删数据。
 
-**Docker Compose 安装**：解压 `jigong-v1.1.0-compose.tar.gz`，进目录执行 `docker compose up -d --build`。
+**Docker Compose 安装**：解压 `jigong-v1.1.1-compose.tar.gz`，进目录执行 `docker compose up -d --build`。
 
 ## 在线更新
 
 v1.1.0 起支持应用内更新：**设置 → 版本与更新 → 检查更新 → 更新到 x.y.z**。
 
-- 更新源优先用自有网关的 `latest.json`（可用环境变量 `JIGONG_UPDATE_URL` 覆盖），
-  拉不到时自动回落到 GitHub Releases；
+- 更新源优先用自有网关 `https://zupu-update.lijiacore.com:4440/jigong/latest.json`
+  （`JIGONG_UPDATE_URL` 可覆盖），拉不到时自动回落到 GitHub Releases；
+- 网关用自签名证书：默认对网关域名跳过证书校验（`JIGONG_UPDATE_INSECURE=0` 可关闭，
+  `=1` 对任意源跳过）；更新包本身仍校验 `size` + `sha256`；
 - 下载后校验 `size` + `sha256`，解压替换 `<数据目录>/runtime/{jigong,web}`，随后进程原地重启（约 3~5 秒）；
 - 数据库与业务数据不受影响；
 - `latest.json` 格式（多平台）：
 
+> 网关发布：把平台包做成 **zip**（网关对 `.tar.gz` 强制验授权，`.zip` 不验），
+> 放到网关 `packages/zupu/jigong/` 下，再写 `latest.json` 指向它们即可。
+
 ```json
 {
-  "version": "v1.1.0",
+  "version": "v1.1.1",
   "notes": "更新说明",
   "releaseAt": "2026-11-21T19:25:00+08:00",
   "packages": {
-    "linux-amd64": { "url": "https://.../jigong-v1.1.0-linux-amd64.tar.gz", "size": 7374609, "sha256": "..." },
+    "linux-amd64": { "url": "https://.../jigong-v1.1.1-linux-amd64.tar.gz", "size": 7374609, "sha256": "..." },
     "linux-arm64": { "url": "...", "size": 0, "sha256": "..." },
     "windows-amd64": { "url": "...", "size": 0, "sha256": "..." }
   }
@@ -75,11 +80,11 @@ v1.1.0 起支持应用内更新：**设置 → 版本与更新 → 检查更新 
 
 ```bash
 # Linux x86_64
-tar -xzf jigong-v1.1.0-linux-amd64.tar.gz
+tar -xzf jigong-v1.1.1-linux-amd64.tar.gz
 cd jigong && ./start.sh
 
 # ARM64（飞牛/群晖等 ARM NAS、树莓派 64 位）
-tar -xzf jigong-v1.1.0-linux-arm64.tar.gz
+tar -xzf jigong-v1.1.1-linux-arm64.tar.gz
 cd jigong && ./start.sh
 
 # Windows
