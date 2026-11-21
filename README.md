@@ -61,7 +61,7 @@ Excel 全部服务端生成（excelize）：表头、边框、数字格式、人
 
 ## 在线更新
 
-v1.1.0 起支持应用内更新：**设置 → 版本与更新 → 检查更新 → 更新到 x.y.z**。
+从测试版 `1.0.0.1121.1` 起支持应用内更新：**设置 → 版本与更新 → 检查更新 → 更新到 x.y.z**。
 
 - 更新源优先用自有网关 `https://zupu-update.lijiacore.com:4440/jigong/latest.json`
   （`JIGONG_UPDATE_URL` 可覆盖），拉不到时自动回落到 GitHub Releases；
@@ -76,11 +76,11 @@ v1.1.0 起支持应用内更新：**设置 → 版本与更新 → 检查更新 
 
 ```json
 {
-  "version": "v1.1.1",
+  "version": "v1.0.0.1121.1",
   "notes": "更新说明",
-  "releaseAt": "2026-11-21T19:25:00+08:00",
+  "releaseAt": "2026-11-21T19:47:00+08:00",
   "packages": {
-    "linux-amd64": { "url": "https://.../jigong-v1.1.1-linux-amd64.tar.gz", "size": 7374609, "sha256": "..." },
+    "linux-amd64": { "url": "https://.../jigong-v1.0.0.1121.1-linux-amd64.zip", "size": 7383156, "sha256": "..." },
     "linux-arm64": { "url": "...", "size": 0, "sha256": "..." },
     "windows-amd64": { "url": "...", "size": 0, "sha256": "..." }
   }
@@ -93,11 +93,11 @@ v1.1.0 起支持应用内更新：**设置 → 版本与更新 → 检查更新 
 
 ```bash
 # Linux x86_64
-tar -xzf jigong-v1.1.1-linux-amd64.tar.gz
+tar -xzf jigong-v1.0.0-linux-amd64.tar.gz
 cd jigong && ./start.sh
 
 # ARM64（飞牛/群晖等 ARM NAS、树莓派 64 位）
-tar -xzf jigong-v1.1.1-linux-arm64.tar.gz
+tar -xzf jigong-v1.0.0-linux-arm64.tar.gz
 cd jigong && ./start.sh
 
 # Windows
