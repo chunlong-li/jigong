@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -41,9 +43,25 @@ func main() {
 	}
 	defer database.Close()
 
-	srv := api.NewServer(database, *webDir)
+	api.Version = Version
+	srv := api.NewServer(database, *webDir, *dataDir)
 	if err := srv.EnsureAdmin(adminUser, adminPass); err != nil {
 		log.Fatalf("初始化管理员失败: %v", err)
+	}
+
+	// 在线更新完成后：用新二进制原地替换进程
+	api.RestartHook = func() {
+		if runtime.GOOS == "windows" {
+			log.Println("[update] Windows 下请手动重启程序")
+			return
+		}
+		exe := filepath.Join(*dataDir, "runtime", "jigong")
+		web := filepath.Join(*dataDir, "runtime", "web")
+		args := []string{exe, "-port", *port, "-data-dir", *dataDir, "-web-dir", web}
+		log.Printf("[update] 重启到新版本: %s", exe)
+		if err := syscall.Exec(exe, args, os.Environ()); err != nil {
+			log.Printf("[update] 重启失败: %v", err)
+		}
 	}
 
 	httpServer := &http.Server{

@@ -230,6 +230,19 @@ export const api = {
   logout: () => post<{ status: string }>('/api/logout'),
   me: () => get<{ username: string }>('/api/me', false),
   initStatus: () => get<{ first_time: boolean }>('/api/init-status', false),
+  version: () => get<{ version: string; os: string; arch: string }>('/api/version'),
+  updateCheck: () =>
+    get<{
+      current: string
+      latest: string
+      has_update: boolean
+      notes: string
+      release_at: string
+      source: string
+      platform: string
+      package: { url: string; size: number; sha256: string }
+    }>('/api/update/check'),
+  updateApply: () => post<{ status: string; version: string; message: string }>('/api/update/apply'),
   changePassword: (old_password: string, new_password: string) =>
     post<{ status: string }>('/api/password', { old_password, new_password }),
 

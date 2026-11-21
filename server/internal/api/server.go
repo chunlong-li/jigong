@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"runtime"
 	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
@@ -18,18 +19,23 @@ import (
 
 const sessionCookie = "jigong_session"
 
+// Version 当前版本号，由 main 在启动时注入。
+var Version = "dev"
+
 // Server 持有数据库连接和会话表。
 type Server struct {
 	db       *sql.DB
 	webDir   string
+	dataDir  string
 	mu       sync.Mutex
 	sessions map[string]time.Time
 }
 
-func NewServer(db *sql.DB, webDir string) *Server {
+func NewServer(db *sql.DB, webDir, dataDir string) *Server {
 	return &Server{
 		db:       db,
 		webDir:   webDir,
+		dataDir:  dataDir,
 		sessions: make(map[string]time.Time),
 	}
 }
@@ -64,6 +70,13 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{
+			"version": Version,
+			"os":      runtime.GOOS,
+			"arch":    runtime.GOARCH,
+		})
 	})
 	mux.HandleFunc("GET /api/init-status", s.handleInitStatus)
 
@@ -122,6 +135,9 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/wage-settlements", s.listWageSettlements)
 	mux.HandleFunc("GET /api/wage-settlements/{id}/excel", s.exportWageSlip)
+
+	mux.HandleFunc("GET /api/update/check", s.checkUpdate)
+	mux.HandleFunc("POST /api/update/apply", s.applyUpdate)
 
 	mux.HandleFunc("GET /api/summary", s.summary)
 

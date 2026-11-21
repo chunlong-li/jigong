@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-VER="${1:-1.0.0}"
+VER="${1:-$(cat VERSION 2>/dev/null | tr -d "\n")}"; [ -n "$VER" ] || VER=1.0.0
 OUT="${2:-./安装包}"
 APP=jigong
 BUILD="$(pwd)/.build-pkg"

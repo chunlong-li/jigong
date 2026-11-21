@@ -63,16 +63,32 @@ const hidden = () => props.hiddenRoutes.some(p => route.path.startsWith(p))
 function open () { visible.value = true }
 function close () { visible.value = false }
 
-// 首次进入自动弹一次（localStorage 不可用则不弹、不报错）
+// 只在已登录时弹一次（2026-11-18 属主明确）：记工用 Cookie 会话，
+// 未登录时路由会停在 /login，这里据此判断，登录页/未登录访客一律不弹。
+function loggedIn() {
+  try {
+    if (location.pathname.startsWith('/login')) return false
+    return document.cookie.includes('jigong_session') || document.cookie.includes('session')
+  } catch (e) { return false }
+}
+
 onMounted(() => {
   if (hidden()) return
-  try {
-    if (localStorage.getItem(props.storageKey) === '1') return
-  } catch (e) { return }
-  timer = setTimeout(() => {
+  const tryPop = () => {
+    if (hidden() || !loggedIn()) return false
+    try {
+      if (localStorage.getItem(props.storageKey) === '1') return true
+    } catch (e) { return true }
     try { localStorage.setItem(props.storageKey, '1') } catch (e) {}
-    if (!hidden()) visible.value = true
-  }, props.autoOpenDelay)
+    visible.value = true
+    return true
+  }
+  if (tryPop()) return
+  let n = 0
+  const watch = setInterval(() => {
+    if (tryPop() || ++n > 60) { clearInterval(watch) }
+  }, 1000)
+  timer = watch
 })
 onBeforeUnmount(() => timer && clearTimeout(timer))
 </script>
