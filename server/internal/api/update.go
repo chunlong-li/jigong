@@ -368,10 +368,27 @@ func downloadFile(url, dest string, wantSize int64, wantSHA string) error {
 }
 
 func extractArchive(archive, dest string) error {
+	// 按文件头判断格式（下载后的临时文件名不带后缀，不能靠后缀判断）
+	f, err := os.Open(archive)
+	if err != nil {
+		return err
+	}
+	head := make([]byte, 4)
+	n, _ := io.ReadFull(f, head)
+	f.Close()
+	head = head[:n]
+
+	if n >= 4 && head[0] == 'P' && head[1] == 'K' {
+		return extractZip(archive, dest)
+	}
+	if n >= 2 && head[0] == 0x1f && head[1] == 0x8b {
+		return extractTarGz(archive, dest)
+	}
+	// 兜底：按后缀
 	if strings.HasSuffix(archive, ".zip") {
 		return extractZip(archive, dest)
 	}
-	return extractTarGz(archive, dest)
+	return fmt.Errorf("无法识别的更新包格式（文件头 % x）", head)
 }
 
 func extractTarGz(archive, dest string) error {

@@ -1,0 +1,137 @@
+name: release
+
+# 推 tag（v 开头）即自动出包：
+#   git tag v1.0.0.1122.2 && git push origin v1.0.0.1122.2
+# 产物：linux-amd64 / linux-arm64 / windows-amd64 三个包 + 飞牛 fpk ×2 + compose 包 ×2
+# 说明：网关（自建、在 NAS 上）不在这里发布，仍走 scripts/build-*.sh + 手动放包
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '版本 tag（如 v1.0.0.1122.2）'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 解析版本号
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ver=${TAG#v}" >> "$GITHUB_OUTPUT"
+          if [ -f VERSION ] && [ "$(cat VERSION)" != "${TAG#v}" ]; then
+            echo "::warning::VERSION 文件是 $(cat VERSION)，与 tag ${TAG} 不一致（仅提示）"
+          fi
+          # 版本号段数 > 3（如 1.0.0.1122.2）→ 测试版，标 Pre-release
+          DOTS=$(printf '%s' "$TAG" | tr -cd '.' | wc -c)
+          if [ "$DOTS" -ge 3 ]; then echo "pre=true" >> "$GITHUB_OUTPUT"; else echo "pre=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: 构建前端
+        run: |
+          cd web
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: 交叉编译后端（静态链接）
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p ../dist
+          cd server
+          V="${{ steps.ver.outputs.ver }}"
+          LDFLAGS="-s -w -X main.Version=$V"
+          GOOS=linux   GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o ../dist/jigong-linux-amd64 .
+          GOOS=linux   GOARCH=arm64 go build -trimpath -ldflags "$LDFLAGS" -o ../dist/jigong-linux-arm64 .
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$LDFLAGS" -o ../dist/jigong-windows-amd64.exe .
+          cd ..
+          file dist/* | sed 's/^/  /'
+          if file dist/jigong-linux-amd64 | grep -qv 'statically linked'; then
+            echo "::error::linux 产物不是静态链接"
+            exit 1
+          fi
+
+      - name: 组装安装包
+        run: |
+          set -e
+          V="${{ steps.ver.outputs.ver }}"
+          T="$PWD/dist"
+          OUT="$PWD/out"
+          mkdir -p "$OUT/Linux" "$OUT/arm" "$OUT/Windows" "$T/pkg"
+
+          # Linux / ARM 裸二进制包
+          for a in amd64 arm64; do
+            D="$T/pkg/$a"; rm -rf "$D"; mkdir -p "$D/jigong"
+            cp "$T/jigong-linux-$a" "$D/jigong/jigong"; chmod 755 "$D/jigong/jigong"
+            cp -r web/dist "$D/jigong/web"; mkdir -p "$D/jigong/data"
+            printf '#!/bin/sh\ncd "$(dirname "$0")"\nexec ./jigong -port 8910 -data-dir ./data -web-dir ./web\n' > "$D/jigong/start.sh"
+            chmod 755 "$D/jigong/start.sh"
+            printf '记工 · Linux %s\n\n启动：./start.sh\n访问：http://<本机IP>:8910\n账号：admin / admin123（登录后请到「设置」改密码）\n数据：./data/jigong.db\n' "$a" > "$D/jigong/README.txt"
+            if [ "$a" = amd64 ]; then
+              tar -czf "$OUT/Linux/jigong-v$V-linux-amd64.tar.gz" -C "$D" jigong
+            else
+              tar -czf "$OUT/arm/jigong-v$V-linux-arm64.tar.gz" -C "$D" jigong
+            fi
+          done
+
+          # Windows 压缩包
+          D="$T/pkg/win"; rm -rf "$D"; mkdir -p "$D/jigong"
+          cp "$T/jigong-windows-amd64.exe" "$D/jigong/jigong.exe"
+          cp -r web/dist "$D/jigong/web"; mkdir -p "$D/jigong/data"
+          printf '@echo off\r\ncd /d %%~dp0\r\nstart "" http://127.0.0.1:8910\r\njigong.exe -port 8910 -data-dir .\\data -web-dir .\\web\r\npause\r\n' > "$D/jigong/启动.bat"
+          printf '记工 · Windows 64 位\r\n\r\n启动：双击「启动.bat」\r\n访问：http://127.0.0.1:8910\r\n账号：admin / admin123\r\n' > "$D/jigong/README.txt"
+          ( cd "$D" && zip -qr "$OUT/Windows/jigong-v$V-windows-amd64.zip" jigong )
+
+          # 飞牛 fpk（需要 Pillow 画图标）
+          pip install --quiet pillow
+          bash scripts/build-fpk.sh "$V" amd64 "$OUT/Linux"
+          bash scripts/build-fpk.sh "$V" arm64 "$OUT/arm"
+
+          # Docker Compose 包
+          bash scripts/build-compose-pkg.sh "$V" "$OUT"
+
+          echo "==> 产物"
+          find "$OUT" -type f -printf '%10s  %p\n' | sed 's/^/  /'
+
+      - name: 发布到 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: 记工 ${{ steps.ver.outputs.tag }}
+          prerelease: ${{ steps.ver.outputs.pre == 'true' }}
+          overwrite_files: true
+          files: |
+            out/Linux/*.tar.gz
+            out/Linux/*.fpk
+            out/arm/*.tar.gz
+            out/arm/*.fpk
+            out/Windows/*.zip
+            out/*compose*.tar.gz
+            out/*compose*.zip
+          fail_on_unmatched_files: false
