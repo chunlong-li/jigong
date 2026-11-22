@@ -101,6 +101,14 @@ CREATE TABLE IF NOT EXISTS worklogs (
 CREATE INDEX IF NOT EXISTS idx_worklogs_project_date ON worklogs(project_id, work_date);
 CREATE INDEX IF NOT EXISTS idx_worklogs_worker ON worklogs(worker_id);
 
+CREATE TABLE IF NOT EXISTS sessions (
+	token      TEXT PRIMARY KEY,
+	username   TEXT NOT NULL DEFAULT '',
+	expires_at TEXT NOT NULL,
+	created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
 CREATE TABLE IF NOT EXISTS wage_settlements (
 	id             INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id     INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

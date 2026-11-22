@@ -100,9 +100,11 @@
       <el-collapse v-if="changelog.length" v-model="activeLog" accordion class="log-collapse">
         <el-collapse-item v-for="e in changelog" :key="e.version" :name="'log' + e.version.replace(/\./g, '')">
           <template #title>
-            <span class="log-title">v{{ e.version }}</span>
-            <span class="log-count">{{ e.date }} 发布</span>
-            <el-tag v-if="e.version === version" size="small" effect="dark" style="margin-left: 8px">当前</el-tag>
+            <div class="log-head">
+              <span class="log-title">v{{ e.version }}</span>
+              <span class="log-count">{{ e.date }} 发布</span>
+              <el-tag v-if="e.version === version" size="small" effect="dark">当前</el-tag>
+            </div>
           </template>
           <div class="log-entry">
             <div v-for="(g, gi) in e.groups" :key="gi" class="log-group">
@@ -332,3 +334,56 @@ async function submit() {
   }
 }
 </script>
+
+<style scoped>
+.ver-click {
+  cursor: pointer;
+  user-select: none;
+}
+.beta-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px dashed #e6a23c;
+  border-radius: 6px;
+}
+.beta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.log-collapse {
+  border: none;
+}
+.log-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.log-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.log-count {
+  color: #909399;
+  font-size: 12px;
+}
+.log-entry {
+  padding: 2px 4px 6px;
+}
+.log-group {
+  margin-bottom: 6px;
+}
+.log-group-name {
+  margin: 6px 0 2px;
+  font-size: 13px;
+  color: #303133;
+}
+.log-line {
+  margin: 2px 0;
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.7;
+}
+</style>

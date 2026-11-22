@@ -28,7 +28,7 @@ type Server struct {
 	webDir   string
 	dataDir  string
 	mu       sync.Mutex
-	sessions map[string]time.Time
+	// 会话存 SQLite，重启/在线更新后登录态不丢
 }
 
 func NewServer(db *sql.DB, webDir, dataDir string) *Server {
@@ -36,7 +36,7 @@ func NewServer(db *sql.DB, webDir, dataDir string) *Server {
 		db:       db,
 		webDir:   webDir,
 		dataDir:  dataDir,
-		sessions: make(map[string]time.Time),
+
 	}
 }
 
@@ -179,14 +179,13 @@ func (s *Server) validSession(token string) bool {
 	if token == "" {
 		return false
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	exp, ok := s.sessions[token]
-	if !ok {
+	var exp string
+	if err := s.db.QueryRow(`SELECT expires_at FROM sessions WHERE token = ?`, token).Scan(&exp); err != nil {
 		return false
 	}
-	if time.Now().After(exp) {
-		delete(s.sessions, token)
+	t, err := time.Parse("2006-01-02 15:04:05", exp)
+	if err != nil || time.Now().After(t) {
+		_, _ = s.db.Exec(`DELETE FROM sessions WHERE token = ?`, token)
 		return false
 	}
 	return true
@@ -198,17 +197,16 @@ func (s *Server) newSession() (string, time.Time) {
 		panic(err)
 	}
 	token := hex.EncodeToString(b)
-	exp := time.Now().Add(7 * 24 * time.Hour)
-	s.mu.Lock()
-	s.sessions[token] = exp
-	s.mu.Unlock()
+	exp := time.Now().Add(30 * 24 * time.Hour)
+	_, _ = s.db.Exec(`INSERT INTO sessions (token, username, expires_at, created_at) VALUES (?,?,?,?)`,
+		token, "", exp.Format("2006-01-02 15:04:05"), now())
+	// 顺手清理过期会话
+	_, _ = s.db.Exec(`DELETE FROM sessions WHERE expires_at < ?`, time.Now().Format("2006-01-02 15:04:05"))
 	return token, exp
 }
 
 func (s *Server) dropSession(token string) {
-	s.mu.Lock()
-	delete(s.sessions, token)
-	s.mu.Unlock()
+	_, _ = s.db.Exec(`DELETE FROM sessions WHERE token = ?`, token)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
