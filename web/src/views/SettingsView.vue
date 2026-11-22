@@ -7,54 +7,6 @@
       </div>
     </div>
 
-    <div class="card" style="margin-bottom: 16px">
-      <h3 style="margin: 0 0 14px; font-size: 16px">版本与更新</h3>
-      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
-        <span>当前版本：<b class="ver-click" title="" @click="tapVersion">{{ version || '—' }}</b></span>
-        <span class="muted" v-if="platform">（{{ platform }}）</span>
-        <el-button :loading="checking" @click="checkUpdate">检查更新</el-button>
-        <el-button v-if="update.has_update" type="primary" :loading="applying" @click="doUpdate">
-          更新到 {{ update.latest }}
-        </el-button>
-      </div>
-      <div v-if="checked" style="margin-top: 12px">
-        <el-alert
-          :type="update.has_update ? 'warning' : 'success'"
-          :closable="false"
-          show-icon
-          :title="update.has_update ? '发现新版本 ' + update.latest : '已是最新版本'"
-        />
-        <div v-if="update.has_update && update.notes" class="form-tip" style="margin-top: 8px; white-space: pre-wrap">
-          {{ update.notes }}
-        </div>
-        <div v-if="update.source" class="form-tip" style="margin-top: 6px">
-          更新源：{{ update.source === 'github' ? 'GitHub Releases' : update.source }}
-        </div>
-      </div>
-      <div v-if="betaMode" style="margin-top: 12px; padding: 10px 12px; border: 1px dashed #e6a23c; border-radius: 6px">
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
-          <el-tag type="warning" effect="plain" size="small">测试版通道</el-tag>
-          <span class="muted">正式版 v{{ stableVersion || version }}</span>
-          <el-button :loading="betaChecking" @click="checkBeta">检测测试版</el-button>
-          <el-button v-if="beta.has_update" type="warning" :loading="applying" @click="doUpdateBeta">
-            更新测试版 {{ beta.latest }}
-          </el-button>
-          <el-button link type="info" @click="exitBeta">退出测试版通道</el-button>
-        </div>
-        <div v-if="betaChecked" v-show="beta.has_update || beta.checked" class="form-tip" style="margin-top: 8px">
-          <span v-if="beta.has_update">发现测试版 {{ beta.latest }}：{{ beta.notes }}</span>
-          <span v-else>已是最新测试版（{{ beta.latest }}）</span>
-        </div>
-        <div class="form-tip" style="margin-top: 6px">
-          测试版只从自有网关获取，更新后如需回到正式版，等正式版号更高时用「检查更新」即可。
-        </div>
-      </div>
-
-      <p class="form-tip" style="margin-top: 10px">
-        更新会下载对应平台安装包，替换运行目录里的程序与前端，然后自动重启服务（约 3~5 秒）。数据不受影响。
-      </p>
-    </div>
-
     <el-row :gutter="16">
       <el-col :xs="24" :md="12">
         <div class="card">
@@ -91,6 +43,78 @@
         </div>
       </el-col>
     </el-row>
+
+    <div class="card" style="margin-bottom: 16px">
+      <h3 style="margin: 0 0 14px; font-size: 16px">版本与更新</h3>
+      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
+        <span>当前版本：<b class="ver-click" title="" @click="tapVersion">{{ version || '—' }}</b></span>
+        <span class="muted" v-if="platform">（{{ platform }}）</span>
+        <el-button :loading="checking" @click="checkUpdate">检查更新</el-button>
+        <el-button v-if="update.has_update" type="primary" :loading="applying" @click="doUpdate">
+          更新到 {{ update.latest }}
+        </el-button>
+      </div>
+      <div v-if="checked" style="margin-top: 12px">
+        <el-alert
+          :type="update.has_update ? 'warning' : 'success'"
+          :closable="false"
+          show-icon
+          :title="update.has_update ? '发现新版本 ' + update.latest : '已是最新版本'"
+        />
+        <div v-if="update.has_update && update.notes" class="form-tip" style="margin-top: 8px; white-space: pre-wrap">
+          {{ update.notes }}
+        </div>
+        <div v-if="update.source" class="form-tip" style="margin-top: 6px">
+          更新源：{{ update.source === 'github' ? 'GitHub Releases' : update.source }}
+        </div>
+      </div>
+      <div v-if="betaMode" class="beta-box">
+        <div class="beta-row">
+          <el-tag type="warning" effect="plain" size="small">测试版通道</el-tag>
+          <span class="muted">当前正式版 v{{ stableVersion || version }}</span>
+          <el-button size="small" :loading="betaChecking" @click="checkBeta">检测测试版</el-button>
+          <el-button v-if="beta.has_update" size="small" type="warning" :loading="applying" @click="doUpdateBeta">
+            更新测试版 {{ beta.latest }}
+          </el-button>
+          <el-button link size="small" @click="exitBeta">退出测试版通道</el-button>
+        </div>
+        <div v-if="betaChecked" style="margin-top: 10px">
+          <el-alert
+            :type="beta.has_update ? 'warning' : 'success'"
+            :closable="false"
+            show-icon
+            :title="beta.has_update ? '发现测试版 ' + beta.latest : '已是最新测试版' + (beta.latest ? '（' + beta.latest + '）' : '')"
+          />
+          <div v-if="beta.has_update && beta.notes" class="form-tip" style="margin-top: 6px">{{ beta.notes }}</div>
+        </div>
+        <div class="form-tip" style="margin-top: 8px">
+          测试版只从自有网关获取，不发 GitHub。想回正式版：等正式版号更高时用上面的「检查更新」即可。
+        </div>
+      </div>
+
+      <p class="form-tip" style="margin-top: 10px">
+        更新会下载对应平台安装包，替换运行目录里的程序与前端，然后自动重启服务（约 3~5 秒）。数据不受影响。
+      </p>
+
+      <el-divider content-position="left">版本更新日志</el-divider>
+      <el-collapse v-if="changelog.length" v-model="activeLog" accordion class="log-collapse">
+        <el-collapse-item v-for="e in changelog" :key="e.version" :name="'log' + e.version.replace(/\./g, '')">
+          <template #title>
+            <span class="log-title">v{{ e.version }}</span>
+            <span class="log-count">{{ e.date }} 发布</span>
+            <el-tag v-if="e.version === version" size="small" effect="dark" style="margin-left: 8px">当前</el-tag>
+          </template>
+          <div class="log-entry">
+            <div v-for="(g, gi) in e.groups" :key="gi" class="log-group">
+              <p class="log-group-name" v-if="g.name"><b>{{ g.name }}</b></p>
+              <p v-for="(it, ii) in g.items" :key="ii" class="log-line">· {{ it }}</p>
+            </div>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+      <div v-else class="form-tip">暂无更新日志</div>
+    </div>
+
   </div>
 </template>
 
@@ -115,6 +139,44 @@ const betaChecking = ref(false)
 const betaChecked = ref(false)
 const stableVersion = ref('')
 const beta = reactive({ latest: '', has_update: false, notes: '' })
+
+interface ClGroup { name: string; items: string[] }
+interface ClEntry { version: string; date: string; groups: ClGroup[] }
+const changelog = ref<ClEntry[]>([])
+const activeLog = ref<string[]>([])
+
+// 解析：`## v版本 | 日期` → `### 分组` → `· 条目`
+function parseChangelog(md: string): ClEntry[] {
+  const out: ClEntry[] = []
+  let cur: ClEntry | null = null
+  let grp: ClGroup | null = null
+  for (const raw of md.split('\n')) {
+    const line = raw.trim()
+    const h2 = line.match(/^##\s+(.+)$/)
+    if (h2) {
+      const [ver, date = ''] = h2[1].split('|').map((x) => x.trim())
+      cur = { version: ver.replace(/^v/, ''), date, groups: [] }
+      grp = null
+      out.push(cur)
+      continue
+    }
+    const h3 = line.match(/^###\s+(.+)$/)
+    if (h3 && cur) {
+      grp = { name: h3[1].trim(), items: [] }
+      cur.groups.push(grp)
+      continue
+    }
+    const li = line.match(/^[·\-*]\s*(.+)$/)
+    if (li && cur) {
+      if (!grp) {
+        grp = { name: '', items: [] }
+        cur.groups.push(grp)
+      }
+      grp.items.push(li[1].trim())
+    }
+  }
+  return out
+}
 let taps = 0
 let tapTimer: any = null
 
@@ -193,6 +255,13 @@ onMounted(async () => {
     stableVersion.value = m ? m[1] : v.version
     try {
       betaMode.value = localStorage.getItem('jigong_beta_channel') === '1'
+    } catch {
+      /* ignore */
+    }
+    try {
+      const cl = await api.changelog()
+      changelog.value = parseChangelog(cl.content || '')
+      if (changelog.value.length) activeLog.value = ['log' + changelog.value[0].version.replace(/\./g, '')]
     } catch {
       /* ignore */
     }

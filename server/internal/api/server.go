@@ -138,6 +138,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/wage-settlements", s.listWageSettlements)
 	mux.HandleFunc("GET /api/wage-settlements/{id}/excel", s.exportWageSlip)
 
+	mux.HandleFunc("GET /api/changelog", s.getChangelog)
 	mux.HandleFunc("GET /api/update/check", s.checkUpdate)
 	mux.HandleFunc("POST /api/update/apply", s.applyUpdate)
 

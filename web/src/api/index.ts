@@ -233,6 +233,7 @@ export const api = {
   me: () => get<{ username: string }>('/api/me', false),
   initStatus: () => get<{ first_time: boolean }>('/api/init-status', false),
   version: () => get<{ version: string; os: string; arch: string }>('/api/version'),
+  changelog: () => get<{ version: string; content: string }>('/api/changelog'),
   updateCheck: (channel?: 'stable' | 'beta') =>
     get<{
       current: string
