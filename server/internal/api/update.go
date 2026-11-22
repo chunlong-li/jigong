@@ -57,6 +57,26 @@ func updateHTTPClient(url string, timeout time.Duration) *http.Client {
 	return c
 }
 
+// updateChannel 读取通道：stable（默认）/ beta
+func updateChannel(r *http.Request) string {
+	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("channel")), "beta") {
+		return "beta"
+	}
+	return "stable"
+}
+
+// sourceForChannel 测试版走 <base>/beta/latest.json
+func sourceForChannel(ch string) string {
+	src := updateSource()
+	if ch != "beta" {
+		return src
+	}
+	if strings.HasSuffix(src, "/latest.json") {
+		return strings.TrimSuffix(src, "/latest.json") + "/beta/latest.json"
+	}
+	return strings.TrimSuffix(src, "/") + "/beta/latest.json"
+}
+
 func updateSource() string {
 	if v := strings.TrimSpace(os.Getenv("JIGONG_UPDATE_URL")); v != "" {
 		return v
@@ -224,10 +244,32 @@ func versionLess(a, b string) bool {
 
 // checkUpdate 查询更新；网关优先，失败回落 GitHub。
 func (s *Server) checkUpdate(w http.ResponseWriter, r *http.Request) {
+	ch := updateChannel(r)
 	var info *updateInfo
 	var errs []string
 
-	if info, err := fetchGatewayJSON(updateSource()); err == nil {
+	if ch == "beta" {
+		src := sourceForChannel("beta")
+		bi, err := fetchGatewayJSON(src)
+		if err != nil {
+			fail(w, 502, "测试版通道不可用："+err.Error())
+			return
+		}
+		writeJSON(w, 200, map[string]any{
+			"current":    Version,
+			"latest":     bi.Version,
+			"has_update": versionLess(Version, bi.Version),
+			"notes":      bi.Notes,
+			"release_at": bi.ReleaseAt,
+			"source":     src,
+			"channel":    "beta",
+			"package":    bi.Packages[platformKey()],
+			"platform":   platformKey(),
+		})
+		return
+	}
+
+	if info, err := fetchGatewayJSON(sourceForChannel("stable")); err == nil {
 		writeJSON(w, 200, map[string]any{
 			"current":    Version,
 			"latest":     info.Version,
@@ -235,6 +277,7 @@ func (s *Server) checkUpdate(w http.ResponseWriter, r *http.Request) {
 			"notes":      info.Notes,
 			"release_at": info.ReleaseAt,
 			"source":     info.Source,
+			"channel":    "stable",
 			"package":    info.Packages[platformKey()],
 			"platform":   platformKey(),
 		})
@@ -256,6 +299,7 @@ func (s *Server) checkUpdate(w http.ResponseWriter, r *http.Request) {
 		"notes":      info.Notes,
 		"release_at": info.ReleaseAt,
 		"source":     "github",
+		"channel":    "stable",
 		"package":    info.Packages[platformKey()],
 		"platform":   platformKey(),
 	})
@@ -263,8 +307,10 @@ func (s *Server) checkUpdate(w http.ResponseWriter, r *http.Request) {
 
 // applyUpdate 下载并安装更新：替换 data/runtime 下的二进制与前端，然后重启进程。
 func (s *Server) applyUpdate(w http.ResponseWriter, r *http.Request) {
-	info, err := fetchGatewayJSON(updateSource())
-	if err != nil {
+	ch := updateChannel(r)
+	src := sourceForChannel(ch)
+	info, err := fetchGatewayJSON(src)
+	if err != nil && ch != "beta" {
 		info, err = fetchGitHubLatest()
 	}
 	if err != nil {
@@ -277,7 +323,7 @@ func (s *Server) applyUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	pkg, ok := info.Packages[platformKey()]
 	if !ok || pkg.URL == "" {
-		fail(w, 400, "该平台（"+platformKey()+"）暂无更新包")
+		fail(w, 400, "该平台（"+platformKey()+"）的 "+ch+" 通道暂无更新包")
 		return
 	}
 

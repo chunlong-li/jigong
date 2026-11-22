@@ -59,35 +59,34 @@ Excel 全部服务端生成（excelize）：表头、边框、数字格式、人
 - 测试版在 GitHub 上标为 **Pre-release**，不进 `/releases/latest`；网关 `latest.json` 可以指向测试版（想做灰度时就这么发）；
 - 发下一版前先把 `VERSION` 改回正式版号，避免测试版号被当成正式版往上叠。
 
-## 在线更新
+## 在线更新（正式版 / 测试版双通道）
 
-从测试版 `1.0.0.1121.1` 起支持应用内更新：**设置 → 版本与更新 → 检查更新 → 更新到 x.y.z**。
+**设置 → 版本与更新 → 检查更新**，只更新正式版。
 
-- 更新源优先用自有网关 `https://zupu-update.lijiacore.com:4440/jigong/latest.json`
-  （`JIGONG_UPDATE_URL` 可覆盖），拉不到时自动回落到 GitHub Releases；
-- 网关用自签名证书：默认对网关域名跳过证书校验（`JIGONG_UPDATE_INSECURE=0` 可关闭，
-  `=1` 对任意源跳过）；更新包本身仍校验 `size` + `sha256`；
-- 下载后校验 `size` + `sha256`，解压替换 `<数据目录>/runtime/{jigong,web}`，随后进程原地重启（约 3~5 秒）；
-- 数据库与业务数据不受影响；
-- `latest.json` 格式（多平台）：
+### 测试版通道
 
-> 网关发布：把平台包做成 **zip**（网关对 `.tar.gz` 强制验授权，`.zip` 不验），
-> 放到网关 `packages/zupu/jigong/` 下，再写 `latest.json` 指向它们即可。
+在设置页**连续点击「当前版本」3 次**解锁测试版通道，出现：
 
-```json
-{
-  "version": "v1.0.0.1121.1",
-  "notes": "更新说明",
-  "releaseAt": "2026-11-21T19:47:00+08:00",
-  "packages": {
-    "linux-amd64": { "url": "https://.../jigong-v1.0.0.1121.1-linux-amd64.zip", "size": 7383156, "sha256": "..." },
-    "linux-arm64": { "url": "...", "size": 0, "sha256": "..." },
-    "windows-amd64": { "url": "...", "size": 0, "sha256": "..." }
-  }
-}
+```
+测试版通道   [检测测试版]   [更新测试版 v1.0.0.1122.4]   [退出测试版通道]
 ```
 
-## 快速开始
+- 测试版**只从自有网关**获取，**不发 GitHub**，也不出现在 GitHub Releases 里；
+- 通道地址：正式版 `…/jigong/latest.json`，测试版 `…/jigong/beta/latest.json`；
+- 解锁状态记在浏览器 `localStorage`（`jigong_beta_channel`），换浏览器需重新点三次；
+- 想回正式版：等正式版号更高时用普通「检查更新」即可（不会自动降级）。
+
+### 实现说明
+
+- 更新源优先自有网关（`JIGONG_UPDATE_URL` 可覆盖），拉不到时回落 GitHub Releases（仅正式版）；
+- 网关用自签名证书：默认对网关域名跳过校验（`JIGONG_UPDATE_INSECURE=0` 关闭）；
+- 下载后校验 `size` + `sha256`，按**文件头**判断 zip/tar.gz，解压替换 `<数据目录>/runtime/{jigong,web}`，
+  随后进程原地重启（约 3~5 秒），数据不受影响；
+- 网关对 `.tar.gz` 强制验授权，所以更新包一律用 **zip** 发布；
+- 发测试版：本地 `scripts/build-*.sh` 出包 → 放网关 `packages/zupu/jigong/beta/` → 写 `beta/latest.json`；
+- 发正式版：改 `VERSION` → 推 tag，GitHub Actions 自动构建并发布（4 段版本号会被 CI 跳过，不发 GitHub）。
+
+## 快速开始## 快速开始
 
 ### 方式一：直接跑二进制
 

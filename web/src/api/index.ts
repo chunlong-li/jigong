@@ -233,7 +233,7 @@ export const api = {
   me: () => get<{ username: string }>('/api/me', false),
   initStatus: () => get<{ first_time: boolean }>('/api/init-status', false),
   version: () => get<{ version: string; os: string; arch: string }>('/api/version'),
-  updateCheck: () =>
+  updateCheck: (channel?: 'stable' | 'beta') =>
     get<{
       current: string
       latest: string
@@ -243,8 +243,13 @@ export const api = {
       source: string
       platform: string
       package: { url: string; size: number; sha256: string }
-    }>('/api/update/check'),
-  updateApply: () => post<{ status: string; version: string; message: string }>('/api/update/apply'),
+      channel?: string
+    }>(`/api/update/check${channel === 'beta' ? '?channel=beta' : ''}`),
+  updateApply: (channel?: 'stable' | 'beta') =>
+    post<{ status: string; version: string; message: string }>(
+      `/api/update/apply${channel === 'beta' ? '?channel=beta' : ''}`,
+      {},
+    ),
   changePassword: (old_password: string, new_password: string) =>
     post<{ status: string }>('/api/password', { old_password, new_password }),
 

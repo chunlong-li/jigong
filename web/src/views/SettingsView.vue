@@ -10,7 +10,7 @@
     <div class="card" style="margin-bottom: 16px">
       <h3 style="margin: 0 0 14px; font-size: 16px">版本与更新</h3>
       <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
-        <span>当前版本：<b>{{ version || '—' }}</b></span>
+        <span>当前版本：<b class="ver-click" title="" @click="tapVersion">{{ version || '—' }}</b></span>
         <span class="muted" v-if="platform">（{{ platform }}）</span>
         <el-button :loading="checking" @click="checkUpdate">检查更新</el-button>
         <el-button v-if="update.has_update" type="primary" :loading="applying" @click="doUpdate">
@@ -31,6 +31,25 @@
           更新源：{{ update.source === 'github' ? 'GitHub Releases' : update.source }}
         </div>
       </div>
+      <div v-if="betaMode" style="margin-top: 12px; padding: 10px 12px; border: 1px dashed #e6a23c; border-radius: 6px">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+          <el-tag type="warning" effect="plain" size="small">测试版通道</el-tag>
+          <span class="muted">正式版 v{{ stableVersion || version }}</span>
+          <el-button :loading="betaChecking" @click="checkBeta">检测测试版</el-button>
+          <el-button v-if="beta.has_update" type="warning" :loading="applying" @click="doUpdateBeta">
+            更新测试版 {{ beta.latest }}
+          </el-button>
+          <el-button link type="info" @click="exitBeta">退出测试版通道</el-button>
+        </div>
+        <div v-if="betaChecked" v-show="beta.has_update || beta.checked" class="form-tip" style="margin-top: 8px">
+          <span v-if="beta.has_update">发现测试版 {{ beta.latest }}：{{ beta.notes }}</span>
+          <span v-else>已是最新测试版（{{ beta.latest }}）</span>
+        </div>
+        <div class="form-tip" style="margin-top: 6px">
+          测试版只从自有网关获取，更新后如需回到正式版，等正式版号更高时用「检查更新」即可。
+        </div>
+      </div>
+
       <p class="form-tip" style="margin-top: 10px">
         更新会下载对应平台安装包，替换运行目录里的程序与前端，然后自动重启服务（约 3~5 秒）。数据不受影响。
       </p>
@@ -90,10 +109,93 @@ const applying = ref(false)
 const checked = ref(false)
 const update = reactive({ latest: '', has_update: false, notes: '', source: '', current: '' })
 
+// 连续点「当前版本」3 次解锁测试版通道
+const betaMode = ref(false)
+const betaChecking = ref(false)
+const betaChecked = ref(false)
+const stableVersion = ref('')
+const beta = reactive({ latest: '', has_update: false, notes: '' })
+let taps = 0
+let tapTimer: any = null
+
+function tapVersion() {
+  taps++
+  clearTimeout(tapTimer)
+  tapTimer = setTimeout(() => (taps = 0), 1500)
+  if (taps >= 3) {
+    taps = 0
+    if (!betaMode.value) {
+      betaMode.value = true
+      try {
+        localStorage.setItem('jigong_beta_channel', '1')
+      } catch {
+        /* ignore */
+      }
+      ElMessage.success('已解锁测试版通道')
+    }
+  }
+}
+
+function exitBeta() {
+  betaMode.value = false
+  betaChecked.value = false
+  beta.has_update = false
+  try {
+    localStorage.removeItem('jigong_beta_channel')
+  } catch {
+    /* ignore */
+  }
+}
+
+async function checkBeta() {
+  betaChecking.value = true
+  try {
+    const r = await api.updateCheck('beta')
+    beta.latest = r.latest
+    beta.has_update = r.has_update
+    beta.notes = r.notes || ''
+    betaChecked.value = true
+    if (!r.has_update) ElMessage.success('已是最新测试版')
+  } catch (e: any) {
+    ElMessage.error(e.message || '测试版检测失败')
+  } finally {
+    betaChecking.value = false
+  }
+}
+
+async function doUpdateBeta() {
+  try {
+    await ElMessageBox.confirm(
+      `将更新到测试版 ${beta.latest}，服务会短暂重启（约 3~5 秒），数据不受影响。是否继续？`,
+      '更新测试版',
+      { type: 'warning', confirmButtonText: '立即更新', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  applying.value = true
+  try {
+    const r = await api.updateApply('beta')
+    ElMessage.success(r.message || '已更新，正在重启…')
+    setTimeout(() => location.reload(), 5000)
+  } catch (e: any) {
+    ElMessage.error(e.message || '更新失败')
+    applying.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const v = await api.version()
     version.value = v.version
+    // 记录正式版号（去掉测试版尾巴 x.y.z.mmdd.n → x.y.z）
+    const m = v.version.match(/^(\d+\.\d+\.\d+)/)
+    stableVersion.value = m ? m[1] : v.version
+    try {
+      betaMode.value = localStorage.getItem('jigong_beta_channel') === '1'
+    } catch {
+      /* ignore */
+    }
     platform.value = `${v.os}/${v.arch}`
   } catch {
     /* ignore */

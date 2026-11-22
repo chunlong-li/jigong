@@ -41,25 +41,35 @@ jobs:
           DOTS=$(printf '%s' "$TAG" | tr -cd '.' | wc -c)
           if [ "$DOTS" -ge 3 ]; then echo "pre=true" >> "$GITHUB_OUTPUT"; else echo "pre=false" >> "$GITHUB_OUTPUT"; fi
 
+      - name: 说明
+        run: |
+          if [ "${{ steps.ver.outputs.pre }}" = "true" ]; then
+            echo "::notice::测试版（4 段版本号）不在 GitHub 发布，走自建网关；本次跳过。"
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.ver.outputs.pre != 'true' 
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
       - name: 构建前端
+        if: steps.ver.outputs.pre != 'true'
         run: |
           cd web
           npm ci --no-audit --no-fund
           npm run build
 
       - uses: actions/setup-go@v5
+        if: steps.ver.outputs.pre != 'true' 
         with:
           go-version-file: server/go.mod
           cache: true
           cache-dependency-path: server/go.sum
 
       - name: 交叉编译后端（静态链接）
+        if: steps.ver.outputs.pre != 'true'
         env:
           CGO_ENABLED: '0'
         run: |
@@ -78,6 +88,7 @@ jobs:
           fi
 
       - name: 组装安装包
+        if: steps.ver.outputs.pre != 'true'
         run: |
           set -e
           V="${{ steps.ver.outputs.ver }}"
@@ -120,6 +131,7 @@ jobs:
           find "$OUT" -type f -printf '%10s  %p\n' | sed 's/^/  /'
 
       - name: 发布到 Release
+        if: steps.ver.outputs.pre != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
