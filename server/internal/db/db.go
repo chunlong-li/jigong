@@ -203,6 +203,8 @@ CREATE TABLE IF NOT EXISTS settlements (
 	deduction       REAL NOT NULL DEFAULT 0,
 	payable         REAL NOT NULL DEFAULT 0,
 	remark          TEXT NOT NULL DEFAULT '',
+	settled         INTEGER NOT NULL DEFAULT 0,
+	settled_at      TEXT NOT NULL DEFAULT '',
 	created_at      TEXT NOT NULL
 );
 
@@ -500,6 +502,16 @@ func migrateWorkers(d *sql.DB) error {
 			return err
 		}
 		if _, err := d.Exec(`UPDATE settlements SET received = payable WHERE received = 0`); err != nil {
+			return err
+		}
+	}
+	if !stcols["settled"] {
+		if _, err := d.Exec(`ALTER TABLE settlements ADD COLUMN settled INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	if !stcols["settled_at"] {
+		if _, err := d.Exec(`ALTER TABLE settlements ADD COLUMN settled_at TEXT NOT NULL DEFAULT ''`); err != nil {
 			return err
 		}
 	}

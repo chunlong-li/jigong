@@ -19,7 +19,7 @@ func (s *Server) listSettlements(w http.ResponseWriter, r *http.Request) {
 	sqlStr := `SELECT s.id, COALESCE(s.project_id,0), COALESCE(NULLIF(p.name,''), s.project_name),
 	                  s.room, s.contract_type, s.settle_no, s.settle_date, s.period_start,
 	                  s.period_end, s.payee, s.title, s.work_amount, s.material_amount,
-	                  s.deduction, s.payable, s.received, s.remark, s.created_at
+	                  s.deduction, s.payable, s.received, s.remark, s.settled, s.settled_at, s.created_at
 	           FROM settlements s LEFT JOIN projects p ON p.id = s.project_id
 	           WHERE ` + strings.Join(where, " AND ") + `
 	           ORDER BY s.id DESC LIMIT 500`
@@ -35,7 +35,7 @@ func (s *Server) listSettlements(w http.ResponseWriter, r *http.Request) {
 		var x Settlement
 		if err := rows.Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.SettleNo, &x.SettleDate,
 			&x.PeriodStart, &x.PeriodEnd, &x.Payee, &x.Title, &x.WorkAmount, &x.MaterialAmount,
-			&x.Deduction, &x.Payable, &x.Received, &x.Remark, &x.CreatedAt); err != nil {
+			&x.Deduction, &x.Payable, &x.Received, &x.Remark, &x.Settled, &x.SettledAt, &x.CreatedAt); err != nil {
 			fail(w, 500, err.Error())
 			return
 		}
@@ -279,11 +279,11 @@ func (s *Server) findSettlement(id int64) (Settlement, error) {
 	err := s.db.QueryRow(`SELECT s.id, COALESCE(s.project_id,0),
 		COALESCE(NULLIF(p.name,''), s.project_name), s.room, s.contract_type, s.settle_no, s.settle_date,
 		s.period_start, s.period_end, s.payee, s.title, s.work_amount, s.material_amount,
-		s.deduction, s.payable, s.received, s.remark, s.created_at
+		s.deduction, s.payable, s.received, s.remark, s.settled, s.settled_at, s.created_at
 		FROM settlements s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?`, id).
 		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.SettleNo, &x.SettleDate, &x.PeriodStart,
 			&x.PeriodEnd, &x.Payee, &x.Title, &x.WorkAmount, &x.MaterialAmount,
-			&x.Deduction, &x.Payable, &x.Received, &x.Remark, &x.CreatedAt)
+			&x.Deduction, &x.Payable, &x.Received, &x.Remark, &x.Settled, &x.SettledAt, &x.CreatedAt)
 	if err != nil {
 		return x, err
 	}
@@ -381,4 +381,114 @@ func (s *Server) updateSettlementReceived(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, 200, map[string]any{"status": "ok", "received": round2(in.Received)})
+}
+
+// updateSettlement 编辑结算单（已结的不可改）。
+func (s *Server) updateSettlement(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		fail(w, 400, "无效 ID")
+		return
+	}
+	old, err := s.findSettlement(id)
+	if err == sql.ErrNoRows {
+		fail(w, 404, "结算单不存在")
+		return
+	}
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	if old.Settled {
+		fail(w, 409, "该结算单已结清，不能再修改")
+		return
+	}
+
+	var x Settlement
+	if err := decode(r, &x); err != nil {
+		fail(w, 400, "请求格式错误")
+		return
+	}
+	if msg := s.recalcSettlement(&x); msg != "" {
+		fail(w, 400, msg)
+		return
+	}
+	x.ID = id
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback()
+
+	var pid any
+	if x.ProjectID > 0 {
+		pid = x.ProjectID
+	}
+	if _, err := tx.Exec(`UPDATE settlements SET
+			project_id=?, project_name=?, room=?, contract_type=?, settle_no=?, settle_date=?,
+			period_start=?, period_end=?, payee=?, title=?, work_amount=?, material_amount=?,
+			deduction=?, payable=?, received=?, remark=?
+		WHERE id=?`,
+		pid, x.ProjectName, x.Room, x.ContractType, x.SettleNo, x.SettleDate,
+		x.PeriodStart, x.PeriodEnd, x.Payee, x.Title, x.WorkAmount, x.MaterialAmount,
+		x.Deduction, x.Payable, x.Received, x.Remark, id); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	if _, err := tx.Exec(`DELETE FROM settlement_items WHERE settlement_id = ?`, id); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	for _, it := range x.Items {
+		if _, err := tx.Exec(`INSERT INTO settlement_items
+			(settlement_id, category, room, name, spec, unit, quantity, unit_price, amount, sort_order)
+			VALUES (?,?,?,?,?,?,?,?,?,?)`,
+			id, it.Category, it.Room, it.Name, it.Spec, it.Unit, it.Quantity, it.UnitPrice, it.Amount, it.SortOrder); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	out, err := s.findSettlement(id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, out)
+}
+
+// settleSettlement 标记为「已结」。
+func (s *Server) settleSettlement(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		fail(w, 400, "无效 ID")
+		return
+	}
+	res, err := s.db.Exec(`UPDATE settlements SET settled = 1,
+		settled_at = CASE WHEN settled_at = '' THEN ? ELSE settled_at END
+		WHERE id = ? AND settled = 0`, now(), id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		if _, err := s.findSettlement(id); err == sql.ErrNoRows {
+			fail(w, 404, "结算单不存在")
+			return
+		}
+		fail(w, 409, "该结算单已经结清")
+		return
+	}
+	out, err := s.findSettlement(id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, out)
 }

@@ -180,6 +180,8 @@ export interface Settlement {
   payable: number
   received: number
   remark: string
+  settled: boolean
+  settled_at: string
   created_at: string
   items: SettlementItem[]
 }
@@ -342,6 +344,8 @@ export const api = {
       payload,
     ),
   createSettlement: (s: Partial<Settlement>) => post<Settlement>('/api/settlements', s),
+  updateSettlement: (id: number, s: Partial<Settlement>) => put<Settlement>(`/api/settlements/${id}`, s),
+  settleSettlement: (id: number) => post<Settlement>(`/api/settlements/${id}/settle`, {}),
   deleteSettlement: (id: number) => del<{ status: string }>(`/api/settlements/${id}`),
   updateSettlementReceived: (id: number, received: number) =>
     put<{ status: string; received: number }>(`/api/settlements/${id}/received`, { received }),

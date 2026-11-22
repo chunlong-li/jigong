@@ -32,9 +32,20 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" align="right">
+        <el-table-column label="状态" width="86" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.settled ? 'success' : 'info'" effect="plain">
+              {{ row.settled ? '已结' : '未结' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="400" align="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openView(row)">查看</el-button>
+            <el-button link type="primary" :disabled="!!row.settled" @click="openEdit(row)">编辑</el-button>
+            <el-button link :type="row.settled ? 'info' : 'warning'" :disabled="!!row.settled" @click="settle(row)">
+              {{ row.settled ? '已结' : '已结' }}
+            </el-button>
             <el-button link type="warning" @click="openReceived(row)">实收</el-button>
             <el-button link type="success" @click="exportExcel(row)">导出 Excel</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
@@ -43,7 +54,7 @@
       </el-table>
     </div>
 
-    <el-dialog v-model="dialog" title="新建结算单" width="960px" top="5vh">
+    <el-dialog v-model="dialog" :title="editingId ? '编辑结算单' : '新建结算单'" width="960px" top="5vh">
       <el-form :model="form" label-width="90px">
         <el-row :gutter="12">
           <el-col :span="12">
@@ -284,6 +295,7 @@ const saving = ref(false)
 const dialog = ref(false)
 const viewDialog = ref(false)
 const viewRow = ref<Settlement | null>(null)
+const editingId = ref<number | null>(null)
 const projectMode = ref<'existing' | 'custom'>('existing')
 const dayRate = ref(0)
 const priceBase = ref<'external' | 'internal'>('external')
@@ -539,6 +551,7 @@ async function load() {
 }
 
 async function openCreate() {
+  editingId.value = null
   Object.assign(form, {
     id: undefined,
     project_id: projects.value[0]?.id,
@@ -562,6 +575,75 @@ async function openCreate() {
   dialog.value = true
   if (form.project_id) {
     await onProjectChange(form.project_id)
+  }
+}
+
+// 由「分类/名称」反查级联路径（材料/包工包料/包工）
+function pathOfSettlement(name: string): string[] {
+  if (!name.includes('/')) return []
+  const [cat, nm] = name.split('/')
+  for (const src of priceSources.value) {
+    const hit = src.items.find((p) => (p.category || '未分类') === cat && p.name === nm)
+    if (hit) return [src.key, cat, nm]
+  }
+  return []
+}
+
+async function openEdit(row: Settlement) {
+  try {
+    const x = await api.settlement(row.id)
+    if (x.settled) {
+      ElMessage.warning('该结算单已结清，不能再修改')
+      return
+    }
+    editingId.value = x.id
+    projectMode.value = x.project_id ? 'existing' : 'custom'
+    Object.assign(form, {
+      id: x.id,
+      project_id: x.project_id || undefined,
+      project_name: x.project_name,
+      contract_type: x.contract_type || '包工包料',
+      settle_no: x.settle_no,
+      settle_date: x.settle_date,
+      period_start: x.period_start,
+      period_end: x.period_end,
+      payee: x.payee,
+      deduction: x.deduction,
+      remark: x.remark,
+      items: (x.items || []).map((it) => ({
+        room: it.room,
+        name: it.name,
+        size: it.spec,
+        unit: it.unit,
+        path: pathOfSettlement(it.name),
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+      })),
+    })
+    period.value = [x.period_start, x.period_end]
+    ratesFor.value = x.project_id || 0
+    dialog.value = true
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
+async function settle(row: Settlement) {
+  try {
+    await ElMessageBox.confirm(
+      `确定把结算单「${row.settle_no || row.id}」标记为已结？已结后不能再编辑。`,
+      '结清确认',
+      { type: 'warning', confirmButtonText: '已结', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await api.settleSettlement(row.id)
+    ElMessage.success('已标记为已结')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e.message)
   }
 }
 
@@ -600,8 +682,13 @@ async function save() {
         sort_order: i,
       })),
     }
-    await api.createSettlement(payload)
-    ElMessage.success('结算单已生成')
+    if (editingId.value) {
+      await api.updateSettlement(editingId.value, payload)
+      ElMessage.success('结算单已更新')
+    } else {
+      await api.createSettlement(payload)
+      ElMessage.success('结算单已生成')
+    }
     dialog.value = false
     await load()
   } catch (e: any) {

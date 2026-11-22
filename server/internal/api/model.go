@@ -147,6 +147,8 @@ type Settlement struct {
 	Payable        float64          `json:"payable"`
 	Received       float64          `json:"received"`
 	Remark         string           `json:"remark"`
+	Settled        bool             `json:"settled"`
+	SettledAt      string           `json:"settled_at"`
 	CreatedAt      string           `json:"created_at"`
 	Items          []SettlementItem `json:"items"`
 }

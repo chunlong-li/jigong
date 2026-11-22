@@ -130,7 +130,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/settlements", s.createSettlement)
 	mux.HandleFunc("GET /api/settlements/{id}", s.getSettlement)
 	mux.HandleFunc("DELETE /api/settlements/{id}", s.deleteSettlement)
+	mux.HandleFunc("PUT /api/settlements/{id}", s.updateSettlement)
 	mux.HandleFunc("PUT /api/settlements/{id}/received", s.updateSettlementReceived)
+	mux.HandleFunc("POST /api/settlements/{id}/settle", s.settleSettlement)
 	mux.HandleFunc("GET /api/settlements/{id}/excel", s.exportSettlement)
 
 	mux.HandleFunc("GET /api/wage-settlements", s.listWageSettlements)
