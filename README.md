@@ -1,126 +1,82 @@
 # 记工
 
-工地记工与结算系统。一个单文件就能跑起来的小系统，专治"工地上记工、报给甲方、月底结算"这一套账。
+工地记工与结算系统。单二进制 + SQLite，专治"工地上记工、报给甲方、月底结算"这一套账。
 
 - 后端：Go + SQLite（纯 Go 驱动，无需 CGO）+ excelize
 - 前端：Vue 3 + TypeScript + Vite + Element Plus
-- 部署：单二进制 / Docker Compose，自带 ARM 与 Windows 构建
-
----
+- 部署：单二进制 / Docker Compose / 飞牛 fpk，含 ARM 与 Windows 构建
 
 ## 功能
 
 | 模块 | 说明 |
 |---|---|
-| 工地项目 | 名称、地址、客户、合同金额、开工日期；**承包方式**：包工包料 / 包工 / 点工；状态在列表行内直接切换（暂停 / 恢复 / 完工） |
-| 工人管理 | 姓名、电话、身份证、**内部单价**（日薪，记工成本）、**对外单价**（报给客户）、**加班单价**（元/小时） |
-| 记工 | 同一工人 + 同一工地合并为一条，按总天数统计；**一天 / 半天 / 加班** 按钮选择（一天=1、半天=0.5、加班按小时单独统计不计天数）；同一天可「一天+加班」叠加；保留按时 / 计件；支持**批量记工**（多选工人 × 多选日期） |
-| 工资结算 | 记工页按「工地 / 月份」查看，一键结算：归档冻结，新记工重新累计；可导出**工资单 Excel** |
-| 价格明细 | 三套价目表：**材料价格**（可自定义分类、可按分类筛选）、**施工价格（包工包料）**、**施工价格（包工）**，施工价含**同行价格**与**客户价格** |
-| 进料登记 | 在工地项目行内点「进料」，材料名称从价目表下拉带价（可手改），新材料自动入价目表；可查看该工地全部进料明细 |
-| 报价单 | 项目名称自由填写 + 承包方式 + **报价类型（客户报价 / 同行报价）**；明细支持 **材料 / 包工包料 / 包工** 三级选择、**尺寸算式**（5*6=30 自动算面积）、房号；导出带大写金额的 Excel |
-| 结算单（对甲方） | 项目可选已有或自定义，明细三级选择，点工可从记工自动汇总工数（总工数行带价、按日明细不带价）；登记实收金额；导出 Excel |
-
-Excel 全部服务端生成（excelize）：表头、边框、数字格式、人民币大写、盖章签字行都是成品格式。
-
-## 界面
-
-- 桌面端：左侧固定菜单
-- 手机端：侧边栏收起，左上角三横线打开抽屉菜单；弹窗自适应宽度
+| 工地项目 | 名称、地址、客户、合同金额、开工日期；承包方式：包工包料 / 包工 / 点工；状态行内切换（暂停 / 恢复 / 完工） |
+| 工人管理 | 内部单价（记工成本）、对外单价（报给客户）、加班单价（元/小时） |
+| 记工 | 一天 / 半天 / 加班（一天=1、半天=0.5、加班按小时单独统计不计天数），同一天可「一天+加班」叠加；支持批量记工 |
+| 工资结算 | 按工地 / 月份查看，一键结算归档冻结；可导出工资单 Excel |
+| 价格明细 | 三套价目：材料价格、施工价格（包工包料）、施工价格（包工），施工价含同行价与客户价；分类可自定义 |
+| 进料登记 | 从价目表下拉带价，新材料自动入价目表；可查该工地全部进料明细 |
+| 报价单 | 项目名自由填写 + 承包方式 + 报价类型（客户 / 同行）；明细支持材料 / 包工包料 / 包工三级选择、尺寸算式；导出带大写金额的 Excel |
+| 结算单 | 项目可选已有或自定义，点工可从记工汇总工数；登记实收；**编辑 / 已结**（已结后不可改） |
 
 ## 下载
 
-预编译安装包见 [Releases](https://github.com/chunlong-li/jigong/releases)。
+预编译安装包见 [Releases](https://github.com/chunlong-li/jigong/releases)。当前正式版 **v1.0.1**。
 
-| 版本 | 说明 |
+| 平台 | 文件（把版本号换成对应版本） |
 |---|---|
-| `v1.0.0` | 稳定版 |
-| `v1.0.0.1121.1` | 测试版（Pre-release，含在线更新） |
-
-| 平台 | 文件 |
-|---|---|
-| Linux x86_64 | `jigong-v1.0.0-linux-amd64.tar.gz`（测试版同名替换版本号） |
-| Linux ARM64 | `jigong-v1.0.0-linux-arm64.tar.gz` |
-| Windows x64 | `jigong-v1.0.0-windows-amd64.zip` |
-| 飞牛 fnOS（x86） | `jigong-v1.0.0-amd64-fnos.fpk` |
-| 飞牛 fnOS（ARM） | `jigong-v1.0.0-arm64-fnos.fpk` |
-| Docker Compose | `jigong-v1.0.0-compose.tar.gz` / `.zip` |
+| Linux x86_64 | `jigong-v1.0.1-linux-amd64.tar.gz` |
+| Linux ARM64 | `jigong-v1.0.1-linux-arm64.tar.gz` |
+| Windows x64 | `jigong-v1.0.1-windows-amd64.zip` |
+| 飞牛 fnOS（x86） | `jigong-v1.0.1-amd64-fnos.fpk` |
+| 飞牛 fnOS（ARM） | `jigong-v1.0.1-arm64-fnos.fpk` |
+| Docker Compose | `jigong-v1.0.1-compose.tar.gz` / `.zip` |
 
 **飞牛 fnOS 安装**：应用中心 → 右上角「手动安装」→ 选 `.fpk`（x86 用 amd64，ARM 用 arm64）。
 
-**Docker Compose 安装**：解压 `jigong-v1.0.0-compose.tar.gz`，进目录执行 `docker compose up -d --build`。
+**Docker Compose 安装**：解压 compose 包，进目录执行 `docker compose up -d --build`。
 
-## 更新日志规则（与族谱一致）
+## 在线更新
 
-- 数据源：`server/internal/api/changelog.md`，用 `go:embed` 打进二进制，设置页「版本更新日志」按折叠面板展示；
-- **只记正式版**，测试版不进日志（测试期的改动合并到下一条正式版记录）；
-- 最新版本在最上面；页面**默认展开第一条**；
-- 格式：`## v1.0.1 | 2026-11-28`，下面用 `### 分组名` + `· 条目` 组织；
-- 每次发正式版：在文件顶部新增一条，并把该版本号写进 `VERSION`。
+实现细节与常见坑见技能 **`selfhosted-update`**。记工的配置：
 
-## 发布流程（正式版 / 测试版）
+| 项 | 值 |
+|---|---|
+| 正式版通道 | `https://zupu-update.lijiacore.com:4440/jigong/latest.json` |
+| 测试版通道 | `https://zupu-update.lijiacore.com:4440/jigong/beta/latest.json` |
+| 覆盖更新源 | 环境变量 `JIGONG_UPDATE_URL` |
+| 证书 | 默认对自有网关域名跳过校验；`JIGONG_UPDATE_INSECURE=0` 关闭 |
+| 测试版入口 | 设置页连点「当前版本」3 次解锁（存 localStorage） |
+| 运行时目录 | `<数据目录>/runtime/{jigong,web}`，更新后 `syscall.Exec` 原地重启 |
+| 登录态 | 存 SQLite `sessions` 表，有效期 30 天，更新后不掉登录 |
 
-| 动作 | 测试版（x.y.z.mmdd.n） | 正式版 |
-|---|---|---|
-| 代码提交 | 只在**本地** commit，**不 push** GitHub | 本地 commit 后 push |
-| 构建 | 本机 `scripts/build-*.sh` | 推 tag，GitHub Actions 自动构建 |
-| 分发 | 只发**自有网关** `jigong/beta/` | GitHub Releases + 网关正式通道 |
-| 更新日志 | 不写（合并到下一条正式版） | 在 `changelog.md` 顶部新增条目 |
+发版规则见技能 **`version-and-release`**。记工的具体约定：
 
-> 测试版代码不推 GitHub，是为了避免半成品代码和测试版标签污染公开仓库；
-> 等测试稳定、决定发正式版时，再一次性把这段时间的代码推上去并打 tag。
+- 版本号写在根目录 `VERSION`，构建脚本默认读取并注入 `-X main.Version`
+- 测试版 `x.y.z.mmdd.n`：**只本机构建 + 只发网关 beta**，代码不推 GitHub
+- 正式版 `x.y.z`：改 `VERSION` → 更新 `changelog.md` → 推代码 + `git tag v1.0.x` → CI 自动出 7 个包
 
-## 版本号规则
+## 更新日志
 
-> 与族谱系统一致，**未经明确要求不升正式版号**。
+数据源 `server/internal/api/changelog.md`，用 `go:embed` 打进二进制，前端通过 `GET /api/changelog` 读取，设置页以折叠面板展示（默认展开最新一条，只记正式版）。
 
-- **正式版**：只递增第三段（`1.0.0 → 1.0.1`），第二段需明确指定；
-- **测试版**：`<当前正式版>.<出包当天 mmdd>.<n>`，如 `1.0.0.1121.1`（1121 = 11 月 21 日，n 从 1 起）；
-- 测试版在 GitHub 上标为 **Pre-release**，不进 `/releases/latest`；网关 `latest.json` 可以指向测试版（想做灰度时就这么发）；
-- 发下一版前先把 `VERSION` 改回正式版号，避免测试版号被当成正式版往上叠。
+条目格式：
 
-## 在线更新（正式版 / 测试版双通道）
+```markdown
+## v1.0.1 | 2026-11-22
 
-**设置 → 版本与更新 → 检查更新**，只更新正式版。
+### 在线更新
 
-### 测试版通道
-
-在设置页**连续点击「当前版本」3 次**解锁测试版通道，出现：
-
-```
-测试版通道   [检测测试版]   [更新测试版 v1.0.0.1122.4]   [退出测试版通道]
+· 一条一个改动
 ```
 
-- 测试版**只从自有网关**获取，**不发 GitHub**，也不出现在 GitHub Releases 里；
-- 通道地址：正式版 `…/jigong/latest.json`，测试版 `…/jigong/beta/latest.json`；
-- 解锁状态记在浏览器 `localStorage`（`jigong_beta_channel`），换浏览器需重新点三次；
-- 想回正式版：等正式版号更高时用普通「检查更新」即可（不会自动降级）。
-
-### 实现说明
-
-- 更新源优先自有网关（`JIGONG_UPDATE_URL` 可覆盖），拉不到时回落 GitHub Releases（仅正式版）；
-- 网关用自签名证书：默认对网关域名跳过校验（`JIGONG_UPDATE_INSECURE=0` 关闭）；
-- 下载后校验 `size` + `sha256`，按**文件头**判断 zip/tar.gz，解压替换 `<数据目录>/runtime/{jigong,web}`，
-  随后进程原地重启（约 3~5 秒），数据不受影响；
-- 网关对 `.tar.gz` 强制验授权，所以更新包一律用 **zip** 发布；
-- 发测试版：本地 `scripts/build-*.sh` 出包 → 放网关 `packages/zupu/jigong/beta/` → 写 `beta/latest.json`；
-- 发正式版：改 `VERSION` → 推 tag，GitHub Actions 自动构建并发布（4 段版本号会被 CI 跳过，不发 GitHub）。
-
-## 快速开始## 快速开始
+## 快速开始
 
 ### 方式一：直接跑二进制
 
 ```bash
-# Linux x86_64
-tar -xzf jigong-v1.0.0-linux-amd64.tar.gz
-cd jigong && ./start.sh
-
-# ARM64（飞牛/群晖等 ARM NAS、树莓派 64 位）
-tar -xzf jigong-v1.0.0-linux-arm64.tar.gz
-cd jigong && ./start.sh
-
-# Windows
-解压后双击「启动.bat」
+tar -xzf jigong-v1.0.1-linux-amd64.tar.gz
+cd jigong && ./start.sh        # Windows 双击「启动.bat」
 ```
 
 浏览器打开 `http://<本机IP>:8910`，默认账号 `admin / admin123`，**登录后请到「设置」改密码**。
@@ -131,15 +87,13 @@ cd jigong && ./start.sh
 docker compose up -d --build
 ```
 
-`docker-compose.yml` 已配好：端口 `8910`、数据挂载 `./data`、健康检查、`pull_policy: build`（本地构建，不去拉不存在的镜像）。
-
 ### 方式三：源码运行
 
 ```bash
 # 后端
 cd server && go build -o jigong . && ./jigong -port 8910 -data-dir ./data -web-dir ../web/dist
 
-# 前端（开发模式，带 /api 代理）
+# 前端开发模式（带 /api 代理）
 cd web && npm install && npm run dev
 ```
 
@@ -148,31 +102,32 @@ cd web && npm install && npm run dev
 - 单文件 SQLite：`data/jigong.db`（WAL 模式），**备份这个目录即可**
 - 金额以元为单位存 REAL，写入前统一四舍五入到分
 
-## 打包自己的安装包
+## 打包
 
 ```bash
-bash scripts/build-packages.sh 1.0.0 [输出目录]
+bash scripts/build-packages.sh    # Linux/ARM/Windows 三平台压缩包
+bash scripts/build-fpk.sh         # 飞牛 fpk（默认 amd64，第二个参数传 arm64）
+bash scripts/build-compose-pkg.sh # Docker Compose 包
 ```
 
-会一次产出 Linux(amd64) / ARM64 / Windows(amd64) 三个压缩包。
+默认输出到 `/vol1/1000/安装包/jigong`（可用参数覆盖）。
 
 ## 目录结构
 
 ```
 server/            Go 后端（net/http + modernc sqlite + excelize）
   internal/db      建表与迁移
-  internal/api     路由、业务、Excel 生成
+  internal/api     路由、业务、Excel、在线更新、更新日志
 web/               Vue 3 前端
-  src/views        各业务页
-  src/components   通用组件（含赞助组件）
-scripts/           打包脚本
+scripts/           打包 / 发布脚本
+.github/workflows 推 tag 自动构建并发布
 docs/              导出的 Excel 示例
 Dockerfile / docker-compose.yml
 ```
 
 ## 说明
 
-- 单用户登录，会话存内存（重启需重新登录）
+- 单用户登录，会话存 SQLite（30 天）
 - 删除项目会级联删除其报价单、结算单、进料；有记工记录时会阻止删除
 - 删除工人时若有记工记录会被阻止
 
@@ -182,4 +137,4 @@ Dockerfile / docker-compose.yml
 
 ## 赞助
 
-项目免费使用。如果你觉得有帮助，欢迎在页面右侧点「赞助作者」扫码支持，或加微信交流。
+项目免费使用。如果觉得有帮助，欢迎在页面右侧点「赞助作者」扫码支持，或加微信交流。
