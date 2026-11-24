@@ -112,6 +112,8 @@ type Quotation struct {
 	TaxAmount  float64         `json:"tax_amount"`
 	Total      float64         `json:"total"`
 	Remark     string          `json:"remark"`
+	Completed  bool            `json:"completed"`
+	CompletedAt string         `json:"completed_at"`
 	CreatedAt  string          `json:"created_at"`
 	Items      []QuotationItem `json:"items"`
 }

@@ -26,9 +26,12 @@
         <el-table-column label="金额" width="130" align="right">
           <template #default="{ row }"><span class="money">{{ money(row.total) }}</span></template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="right">
+        <el-table-column label="操作" width="300" align="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button link :type="row.completed ? 'info' : 'warning'" :disabled="!!row.completed" @click="complete(row)">
+              {{ row.completed ? '已完成' : '已完成' }}
+            </el-button>
             <el-button link type="success" @click="exportExcel(row)">导出 Excel</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
@@ -447,6 +450,25 @@ async function save() {
     ElMessage.error(e.message)
   } finally {
     saving.value = false
+  }
+}
+
+async function complete(row: Quotation) {
+  try {
+    await ElMessageBox.confirm(
+      `确定把报价单「${row.quote_no || row.id}」标记为已完成？完成后不会再出现在结算单的「按报价单结算」里。`,
+      '完成报价单',
+      { type: 'warning', confirmButtonText: '已完成', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await api.completeQuotation(row.id)
+    ElMessage.success('已标记为已完成')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e.message)
   }
 }
 

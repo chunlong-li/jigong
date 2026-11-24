@@ -123,6 +123,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/quotations/{id}", s.getQuotation)
 	mux.HandleFunc("PUT /api/quotations/{id}", s.updateQuotation)
 	mux.HandleFunc("DELETE /api/quotations/{id}", s.deleteQuotation)
+	mux.HandleFunc("POST /api/quotations/{id}/complete", s.completeQuotation)
 	mux.HandleFunc("GET /api/quotations/{id}/excel", s.exportQuotation)
 
 	mux.HandleFunc("GET /api/settlements", s.listSettlements)

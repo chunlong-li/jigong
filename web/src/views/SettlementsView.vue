@@ -56,6 +56,31 @@
 
     <el-dialog v-model="dialog" :title="editingId ? '编辑结算单' : '新建结算单'" width="960px" top="5vh">
       <el-form :model="form" label-width="90px">
+        <el-form-item label="结算方式">
+          <el-radio-group v-model="sourceMode" @change="onSourceModeChange">
+            <el-radio-button value="manual">手工填写</el-radio-button>
+            <el-radio-button value="quotation">按报价单</el-radio-button>
+          </el-radio-group>
+          <el-select
+            v-if="sourceMode === 'quotation'"
+            v-model="quotationId"
+            placeholder="选择报价单（已完成的不显示）"
+            filterable
+            style="width: 320px; margin-left: 12px"
+            @change="onQuotationChange"
+          >
+            <el-option
+              v-for="q in availableQuotations"
+              :key="q.id"
+              :label="`${q.quote_no || q.id} · ${q.project_name || '未命名'} · ¥${money(q.total)}`"
+              :value="q.id"
+            />
+          </el-select>
+          <span v-if="sourceMode === 'quotation' && !availableQuotations.length" class="form-tip" style="margin-left: 10px">
+            没有可用于结算的报价单
+          </span>
+        </el-form-item>
+
         <el-row :gutter="12">
           <el-col :span="12">
             <el-form-item label="项目">
@@ -271,7 +296,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { api, type PriceItem, type Project, type Settlement } from '../api'
+import { api, type PriceItem, type Project, type Quotation, type Settlement } from '../api'
 import { money, monthStart, today } from '../utils/format'
 
 interface Row {
@@ -296,6 +321,10 @@ const dialog = ref(false)
 const viewDialog = ref(false)
 const viewRow = ref<Settlement | null>(null)
 const editingId = ref<number | null>(null)
+// 结算方式：手工 / 按报价单
+const sourceMode = ref<'manual' | 'quotation'>('manual')
+const quotationId = ref<number | undefined>(undefined)
+const availableQuotations = ref<Quotation[]>([])
 const projectMode = ref<'existing' | 'custom'>('existing')
 const dayRate = ref(0)
 const priceBase = ref<'external' | 'internal'>('external')
@@ -550,8 +579,46 @@ async function load() {
   }
 }
 
+async function onSourceModeChange(v: string | number | boolean | undefined) {
+  if (v !== 'quotation') return
+  try {
+    availableQuotations.value = await api.quotations(undefined, 0)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
+// 选中报价单：把抬头和明细带进结算单
+async function onQuotationChange(id: number) {
+  if (!id) return
+  try {
+    const q = await api.quotation(id)
+    projectMode.value = q.project_id ? 'existing' : 'custom'
+    form.project_id = q.project_id || undefined
+    form.project_name = q.project_name || ''
+    form.contract_type = q.contract_type || form.contract_type
+    form.payee = q.client || form.payee
+    if (q.project_id) ratesFor.value = 0
+    form.items = (q.items || []).map((it) => ({
+      room: it.room,
+      name: it.name,
+      size: it.spec,
+      unit: it.unit,
+      path: pathOfSettlement(it.name),
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+    }))
+    if (!form.settle_no) form.settle_no = genNo()
+    ElMessage.success(`已带入报价单「${q.quote_no || q.id}」的 ${form.items.length} 条明细`)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
 async function openCreate() {
   editingId.value = null
+  sourceMode.value = 'manual'
+  quotationId.value = undefined
   Object.assign(form, {
     id: undefined,
     project_id: projects.value[0]?.id,
@@ -590,6 +657,8 @@ function pathOfSettlement(name: string): string[] {
 }
 
 async function openEdit(row: Settlement) {
+  sourceMode.value = 'manual'
+  quotationId.value = undefined
   try {
     const x = await api.settlement(row.id)
     if (x.settled) {

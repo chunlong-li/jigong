@@ -145,6 +145,8 @@ export interface Quotation {
   tax_amount: number
   total: number
   remark: string
+  completed: boolean
+  completed_at: string
   created_at: string
   items: QuotationItem[]
 }
@@ -328,8 +330,14 @@ export const api = {
   updateMaterial: (id: number, m: Partial<Material>) => put<{ status: string }>(`/api/materials/${id}`, m),
   deleteMaterial: (id: number) => del<{ status: string }>(`/api/materials/${id}`),
 
-  quotations: (projectId?: number) =>
-    get<Quotation[]>(`/api/quotations${projectId ? `?project_id=${projectId}` : ''}`),
+  quotations: (projectId?: number, completed?: 0 | 1) => {
+    const qs = new URLSearchParams()
+    if (projectId) qs.set('project_id', String(projectId))
+    if (completed !== undefined) qs.set('completed', String(completed))
+    const q = qs.toString()
+    return get<Quotation[]>(`/api/quotations${q ? `?${q}` : ''}`)
+  },
+  completeQuotation: (id: number) => post<Quotation>(`/api/quotations/${id}/complete`, {}),
   quotation: (id: number) => get<Quotation>(`/api/quotations/${id}`),
   createQuotation: (q: Partial<Quotation>) => post<Quotation>('/api/quotations', q),
   updateQuotation: (id: number, q: Partial<Quotation>) => put<{ status: string }>(`/api/quotations/${id}`, q),

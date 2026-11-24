@@ -178,6 +178,8 @@ CREATE TABLE IF NOT EXISTS quotations (
 	tax_amount  REAL NOT NULL DEFAULT 0,
 	total       REAL NOT NULL DEFAULT 0,
 	remark      TEXT NOT NULL DEFAULT '',
+	completed   INTEGER NOT NULL DEFAULT 0,
+	completed_at TEXT NOT NULL DEFAULT '',
 	created_at  TEXT NOT NULL
 );
 
@@ -520,6 +522,20 @@ func migrateWorkers(d *sql.DB) error {
 	}
 	if !stcols["settled_at"] {
 		if _, err := d.Exec(`ALTER TABLE settlements ADD COLUMN settled_at TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	qcols, err := tableColumns(d, "quotations")
+	if err != nil {
+		return err
+	}
+	if !qcols["completed"] {
+		if _, err := d.Exec(`ALTER TABLE quotations ADD COLUMN completed INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	if !qcols["completed_at"] {
+		if _, err := d.Exec(`ALTER TABLE quotations ADD COLUMN completed_at TEXT NOT NULL DEFAULT ''`); err != nil {
 			return err
 		}
 	}

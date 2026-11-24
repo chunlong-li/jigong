@@ -17,9 +17,14 @@ func (s *Server) listQuotations(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "q.project_id = ?")
 		args = append(args, v)
 	}
+	if v := q.Get("completed"); v == "0" {
+		where = append(where, "COALESCE(q.completed,0) = 0")
+	} else if v == "1" {
+		where = append(where, "COALESCE(q.completed,0) = 1")
+	}
 	sqlStr := `SELECT q.id, COALESCE(q.project_id,0), COALESCE(NULLIF(p.name,''), q.project_name),
 	                  q.room, q.contract_type, q.quote_type, q.quote_no, q.quote_date, q.client, q.title,
-	                  q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.created_at
+	                  q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.completed, q.completed_at, q.created_at
 	           FROM quotations q LEFT JOIN projects p ON p.id = q.project_id
 	           WHERE ` + strings.Join(where, " AND ") + `
 	           ORDER BY q.id DESC LIMIT 500`
@@ -35,7 +40,7 @@ func (s *Server) listQuotations(w http.ResponseWriter, r *http.Request) {
 		var x Quotation
 		if err := rows.Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.QuoteType,
 			&x.QuoteNo, &x.QuoteDate, &x.Client, &x.Title, &x.TaxRate, &x.Subtotal, &x.TaxAmount,
-			&x.Total, &x.Remark, &x.CreatedAt); err != nil {
+			&x.Total, &x.Remark, &x.Completed, &x.CompletedAt, &x.CreatedAt); err != nil {
 			fail(w, 500, err.Error())
 			return
 		}
@@ -178,10 +183,10 @@ func (s *Server) findQuotation(id int64) (Quotation, error) {
 	var x Quotation
 	err := s.db.QueryRow(`SELECT q.id, COALESCE(q.project_id,0),
 		COALESCE(NULLIF(p.name,''), q.project_name), q.room, q.contract_type, q.quote_type, q.quote_no, q.quote_date, q.client,
-		q.title, q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.created_at
+		q.title, q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.completed, q.completed_at, q.created_at
 		FROM quotations q LEFT JOIN projects p ON p.id = q.project_id WHERE q.id = ?`, id).
 		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.QuoteType, &x.QuoteNo, &x.QuoteDate, &x.Client,
-			&x.Title, &x.TaxRate, &x.Subtotal, &x.TaxAmount, &x.Total, &x.Remark, &x.CreatedAt)
+			&x.Title, &x.TaxRate, &x.Subtotal, &x.TaxAmount, &x.Total, &x.Remark, &x.Completed, &x.CompletedAt, &x.CreatedAt)
 	if err != nil {
 		return x, err
 	}
@@ -317,4 +322,35 @@ func writeXLSX(w http.ResponseWriter, filename string, data []byte) {
 	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(filename))
 	w.Header().Set("Content-Length", fmt.Sprint(len(data)))
 	_, _ = w.Write(data)
+}
+
+// completeQuotation 把报价单标记为「已完成」，之后不再出现在结算单的按报价单列表里。
+func (s *Server) completeQuotation(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		fail(w, 400, "无效 ID")
+		return
+	}
+	res, err := s.db.Exec(`UPDATE quotations SET completed = 1,
+		completed_at = CASE WHEN completed_at = '' THEN ? ELSE completed_at END
+		WHERE id = ? AND COALESCE(completed,0) = 0`, now(), id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		if _, err := s.findQuotation(id); isNoRows(err) {
+			fail(w, 404, "报价单不存在")
+			return
+		}
+		fail(w, 409, "该报价单已经是已完成状态")
+		return
+	}
+	x, err := s.findQuotation(id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, x)
 }
