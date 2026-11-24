@@ -371,6 +371,11 @@ func (s *Server) updateSettlementReceived(w http.ResponseWriter, r *http.Request
 		fail(w, 400, "实收金额不能为负")
 		return
 	}
+	// 已结的不能改实收
+	if x, err := s.findSettlement(id); err == nil && x.Settled {
+		fail(w, 409, "该结算单已结清，不能再修改实收金额")
+		return
+	}
 	res, err := s.db.Exec(`UPDATE settlements SET received = ? WHERE id = ?`, round2(in.Received), id)
 	if err != nil {
 		fail(w, 500, err.Error())

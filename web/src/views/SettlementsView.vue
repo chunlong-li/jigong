@@ -46,7 +46,7 @@
             <el-button link :type="row.settled ? 'info' : 'warning'" :disabled="!!row.settled" @click="settle(row)">
               {{ row.settled ? '已结' : '已结' }}
             </el-button>
-            <el-button link type="warning" @click="openReceived(row)">实收</el-button>
+            <el-button link type="warning" :disabled="!!row.settled" @click="openReceived(row)">实收</el-button>
             <el-button link type="success" @click="exportExcel(row)">导出 Excel</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
@@ -244,7 +244,15 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="receivedDialog" title="登记实收金额" width="420px">
+    <el-dialog v-model="receivedDialog" :title="settleAfterReceived ? '登记实收并结清' : '登记实收金额'" width="420px">
+      <el-alert
+        v-if="settleAfterReceived"
+        type="info"
+        :closable="false"
+        show-icon
+        title="这张结算单还没登记实收，保存后会自动标记为已结"
+        style="margin-bottom: 12px"
+      />
       <el-form label-width="90px">
         <el-form-item label="应付金额">
           <span class="money">¥ {{ money(receivedRow?.payable) }}</span>
@@ -698,6 +706,13 @@ async function openEdit(row: Settlement) {
 }
 
 async function settle(row: Settlement) {
+  // 实收还没改过（等于应付或为 0）：先弹实收框，保存后自动结清
+  const rc = Number(row.received || 0)
+  const pay = Number(row.payable || 0)
+  if (rc <= 0 || Math.abs(rc - pay) < 0.005) {
+    openReceivedForSettle(row)
+    return
+  }
   try {
     await ElMessageBox.confirm(
       `确定把结算单「${row.settle_no || row.id}」标记为已结？已结后不能再编辑。`,
@@ -707,8 +722,12 @@ async function settle(row: Settlement) {
   } catch {
     return
   }
+  await doSettle(row.id)
+}
+
+async function doSettle(id: number) {
   try {
-    await api.settleSettlement(row.id)
+    await api.settleSettlement(id)
     ElMessage.success('已标记为已结')
     await load()
   } catch (e: any) {
@@ -776,9 +795,20 @@ const receivedRow = ref<Settlement | null>(null)
 const receivedValue = ref(0)
 const receivedSaving = ref(false)
 
+const settleAfterReceived = ref(false)
+
 function openReceived(row: Settlement) {
+  settleAfterReceived.value = false
   receivedRow.value = row
   receivedValue.value = row.received ?? row.payable ?? 0
+  receivedDialog.value = true
+}
+
+// 点「已结」但还没登记实收：预填应付金额，保存即结清
+function openReceivedForSettle(row: Settlement) {
+  settleAfterReceived.value = true
+  receivedRow.value = row
+  receivedValue.value = Number(row.received) > 0 ? Number(row.received) : Number(row.payable || 0)
   receivedDialog.value = true
 }
 
@@ -786,10 +816,16 @@ async function saveReceived() {
   if (!receivedRow.value) return
   receivedSaving.value = true
   try {
-    await api.updateSettlementReceived(receivedRow.value.id, Number(receivedValue.value || 0))
-    ElMessage.success('实收金额已保存')
+    const id = receivedRow.value.id
+    await api.updateSettlementReceived(id, Number(receivedValue.value || 0))
     receivedDialog.value = false
-    await load()
+    if (settleAfterReceived.value) {
+      settleAfterReceived.value = false
+      await doSettle(id)
+    } else {
+      ElMessage.success('实收金额已保存')
+      await load()
+    }
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
