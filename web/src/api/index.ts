@@ -393,8 +393,12 @@ export const api = {
   updateSettlement: (id: number, s: Partial<Settlement>) => put<Settlement>(`/api/settlements/${id}`, s),
   settleSettlement: (id: number) => post<Settlement>(`/api/settlements/${id}/settle`, {}),
   deleteSettlement: (id: number) => del<{ status: string }>(`/api/settlements/${id}`),
-  updateSettlementReceived: (id: number, received: number) =>
-    put<{ status: string; received: number }>(`/api/settlements/${id}/received`, { received }),
+  updateSettlementReceived: (id: number, received: number, note = '') =>
+    put<{ status: string; received: number }>(`/api/settlements/${id}/received`, { received, note }),
+  settlementPayments: (id: number) =>
+    get<{ id: number; amount: number; source: string; note: string; paid_at: string }[]>(
+      `/api/settlements/${id}/payments`,
+    ),
 }
 
 export function downloadUrl(path: string) {

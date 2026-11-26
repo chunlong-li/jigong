@@ -271,7 +271,25 @@
         <el-form-item label="实收金额">
           <el-input-number v-model="receivedValue" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="receivedNote" placeholder="如：现金 / 微信 / 补差额" />
+        </el-form-item>
       </el-form>
+      <el-divider content-position="left">实收记录</el-divider>
+      <el-table :data="paymentLogs" size="small" border max-height="220" empty-text="还没有实收记录">
+        <el-table-column prop="paid_at" label="时间" width="160" />
+        <el-table-column label="金额" width="110" align="right">
+          <template #default="{ row }">
+            <span class="money" :class="row.amount < 0 ? 'warn' : 'pos'">{{ money(row.amount) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="来源" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="note" label="备注" show-overflow-tooltip />
+      </el-table>
       <template #footer>
         <el-button @click="receivedDialog = false">取消</el-button>
         <el-button type="primary" :loading="receivedSaving" @click="saveReceived">保存</el-button>
@@ -818,6 +836,21 @@ function addItem() {
 const receivedDialog = ref(false)
 const receivedRow = ref<Settlement | null>(null)
 const receivedValue = ref(0)
+const receivedNote = ref('')
+const paymentLogs = ref<{ id: number; amount: number; source: string; note: string; paid_at: string }[]>([])
+
+function sourceLabel(src: string) {
+  if (src === 'customer') return '客户已收'
+  return '手动'
+}
+
+async function loadPaymentLogs(id: number) {
+  try {
+    paymentLogs.value = await api.settlementPayments(id)
+  } catch {
+    paymentLogs.value = []
+  }
+}
 const receivedSaving = ref(false)
 
 const settleAfterReceived = ref(false)
@@ -826,6 +859,9 @@ function openReceived(row: Settlement) {
   settleAfterReceived.value = false
   receivedRow.value = row
   receivedValue.value = row.received ?? row.payable ?? 0
+  receivedNote.value = ''
+  paymentLogs.value = []
+  loadPaymentLogs(row.id)
   receivedDialog.value = true
 }
 
@@ -834,6 +870,9 @@ function openReceivedForSettle(row: Settlement) {
   settleAfterReceived.value = true
   receivedRow.value = row
   receivedValue.value = Number(row.received) > 0 ? Number(row.received) : Number(row.payable || 0)
+  receivedNote.value = '结清登记'
+  paymentLogs.value = []
+  loadPaymentLogs(row.id)
   receivedDialog.value = true
 }
 
@@ -842,7 +881,7 @@ async function saveReceived() {
   receivedSaving.value = true
   try {
     const id = receivedRow.value.id
-    await api.updateSettlementReceived(id, Number(receivedValue.value || 0))
+    await api.updateSettlementReceived(id, Number(receivedValue.value || 0), receivedNote.value)
     receivedDialog.value = false
     if (settleAfterReceived.value) {
       settleAfterReceived.value = false

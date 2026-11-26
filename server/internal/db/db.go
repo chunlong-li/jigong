@@ -185,6 +185,16 @@ CREATE TABLE IF NOT EXISTS customer_payments (
 );
 CREATE INDEX IF NOT EXISTS idx_customer_payments ON customer_payments(customer_id, id);
 
+CREATE TABLE IF NOT EXISTS settlement_payments (
+	id            INTEGER PRIMARY KEY AUTOINCREMENT,
+	settlement_id INTEGER NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
+	amount        REAL NOT NULL DEFAULT 0,
+	source        TEXT NOT NULL DEFAULT 'manual',
+	note          TEXT NOT NULL DEFAULT '',
+	paid_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_settlement_payments ON settlement_payments(settlement_id, id);
+
 CREATE TABLE IF NOT EXISTS quotations (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id    INTEGER REFERENCES projects(id) ON DELETE CASCADE,

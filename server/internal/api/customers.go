@@ -220,6 +220,17 @@ func (s *Server) receivePayment(w http.ResponseWriter, r *http.Request) {
 			fail(w, 500, err.Error())
 			return
 		}
+		note := strings.TrimSpace(in.Note)
+		if note == "" {
+			note = "客户收款冲抵"
+		} else {
+			note = "客户收款冲抵：" + note
+		}
+		if _, err := tx.Exec(`INSERT INTO settlement_payments (settlement_id, amount, source, note, paid_at)
+			VALUES (?,?,?,?,?)`, it.ID, take, "customer", note, now()); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
 		allocs = append(allocs, alloc{SettleNo: it.SettleNo, Amount: take})
 		left = round2(left - take)
 	}

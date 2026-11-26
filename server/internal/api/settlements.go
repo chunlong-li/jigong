@@ -243,6 +243,10 @@ func (s *Server) createSettlement(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if x.Received > 0 {
+		_, _ = tx.Exec(`INSERT INTO settlement_payments (settlement_id, amount, source, note, paid_at)
+			VALUES (?,?,?,?,?)`, x.ID, x.Received, "manual", "建单时登记", t)
+	}
 	if err := tx.Commit(); err != nil {
 		fail(w, 500, err.Error())
 		return
@@ -360,6 +364,7 @@ func (s *Server) updateSettlementReceived(w http.ResponseWriter, r *http.Request
 	}
 	var in struct {
 		Received float64 `json:"received"`
+		Note     string  `json:"note"`
 	}
 	if err := decode(r, &in); err != nil {
 		fail(w, 400, "请求格式错误")
@@ -374,6 +379,12 @@ func (s *Server) updateSettlementReceived(w http.ResponseWriter, r *http.Request
 		fail(w, 409, "该结算单已结清，不能再修改实收金额")
 		return
 	}
+	var oldReceived float64
+	if err := s.db.QueryRow(`SELECT received FROM settlements WHERE id = ?`, id).Scan(&oldReceived); err != nil {
+		fail(w, 404, "结算单不存在")
+		return
+	}
+	delta := round2(in.Received - oldReceived)
 	res, err := s.db.Exec(`UPDATE settlements SET received = ? WHERE id = ?`, round2(in.Received), id)
 	if err != nil {
 		fail(w, 500, err.Error())
@@ -383,7 +394,43 @@ func (s *Server) updateSettlementReceived(w http.ResponseWriter, r *http.Request
 		fail(w, 404, "结算单不存在")
 		return
 	}
+	if delta != 0 {
+		note := strings.TrimSpace(in.Note)
+		if note == "" {
+			note = "手动登记实收"
+		}
+		_, _ = s.db.Exec(`INSERT INTO settlement_payments (settlement_id, amount, source, note, paid_at)
+			VALUES (?,?,?,?,?)`, id, delta, "manual", note, now())
+	}
 	writeJSON(w, 200, map[string]any{"status": "ok", "received": round2(in.Received)})
+}
+
+// listSettlementPayments 结算单的实收记录
+func (s *Server) listSettlementPayments(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		fail(w, 400, "无效 ID")
+		return
+	}
+	rows, err := s.db.Query(`SELECT id, amount, source, note, paid_at FROM settlement_payments
+		WHERE settlement_id = ? ORDER BY id DESC LIMIT 200`, id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	defer rows.Close()
+	out := make([]map[string]any, 0)
+	for rows.Next() {
+		var pid int64
+		var amount float64
+		var source, note, paidAt string
+		if err := rows.Scan(&pid, &amount, &source, &note, &paidAt); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+		out = append(out, map[string]any{"id": pid, "amount": amount, "source": source, "note": note, "paid_at": paidAt})
+	}
+	writeJSON(w, 200, out)
 }
 
 // updateSettlement 编辑结算单（已结的不可改）。
