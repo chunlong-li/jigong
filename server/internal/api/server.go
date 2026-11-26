@@ -122,6 +122,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/customers", s.createCustomer)
 	mux.HandleFunc("PUT /api/customers/{id}", s.updateCustomer)
 	mux.HandleFunc("DELETE /api/customers/{id}", s.deleteCustomer)
+	mux.HandleFunc("POST /api/customers/{id}/receive", s.receivePayment)
+	mux.HandleFunc("GET /api/customers/{id}/payments", s.listCustomerPayments)
 
 	mux.HandleFunc("GET /api/quotations", s.listQuotations)
 	mux.HandleFunc("POST /api/quotations", s.createQuotation)

@@ -197,9 +197,7 @@ func (s *Server) recalcSettlement(x *Settlement) string {
 	x.WorkAmount = round2(work)
 	x.MaterialAmount = round2(material)
 	x.Payable = round2(x.WorkAmount + x.MaterialAmount - x.Deduction)
-	if x.Received == 0 {
-		x.Received = x.Payable
-	}
+	// 实收默认 0（未收款），客户欠款 = 应付 - 实收；收款走结算单「实收」或客户页「已收」
 	x.Received = round2(x.Received)
 	return ""
 }

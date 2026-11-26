@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -124,4 +125,149 @@ func nullableID(id int64) any {
 		return nil
 	}
 	return id
+}
+
+// receivePayment 客户打款：按最早未结的结算单依次冲抵实收。
+func (s *Server) receivePayment(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		fail(w, 400, "无效 ID")
+		return
+	}
+	var in struct {
+		Amount float64 `json:"amount"`
+		Note   string  `json:"note"`
+	}
+	if err := decode(r, &in); err != nil {
+		fail(w, 400, "请求格式错误")
+		return
+	}
+	in.Amount = round2(in.Amount)
+	if in.Amount <= 0 {
+		fail(w, 400, "收款金额必须大于 0")
+		return
+	}
+
+	rows, err := s.db.Query(`SELECT id, settle_no, payable, received FROM settlements
+		WHERE customer_id = ? AND COALESCE(settled,0) = 0 AND payable - received > 0.005
+		ORDER BY settle_date, id`, id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	type openItem struct {
+		ID       int64
+		SettleNo string
+		Left     float64
+	}
+	var open []openItem
+	var totalLeft float64
+	for rows.Next() {
+		var it openItem
+		var payable, received float64
+		if err := rows.Scan(&it.ID, &it.SettleNo, &payable, &received); err != nil {
+			rows.Close()
+			fail(w, 500, err.Error())
+			return
+		}
+		it.Left = round2(payable - received)
+		totalLeft = round2(totalLeft + it.Left)
+		open = append(open, it)
+	}
+	rows.Close()
+
+	if len(open) == 0 || totalLeft <= 0 {
+		fail(w, 400, "该客户没有未结款")
+		return
+	}
+	if in.Amount > totalLeft+0.005 {
+		fail(w, 400, "收款金额超过未结款（未结 ¥"+money2(totalLeft)+"）")
+		return
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback()
+
+	type alloc struct {
+		SettleNo string  `json:"settle_no"`
+		Amount   float64 `json:"amount"`
+	}
+	allocs := make([]alloc, 0)
+	left := in.Amount
+	for _, it := range open {
+		if left <= 0.004 {
+			break
+		}
+		take := it.Left
+		if take > left {
+			take = left
+		}
+		take = round2(take)
+		if _, err := tx.Exec(`UPDATE settlements SET received = ROUND(received + ?, 2) WHERE id = ?`, take, it.ID); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+		allocs = append(allocs, alloc{SettleNo: it.SettleNo, Amount: take})
+		left = round2(left - take)
+	}
+	if _, err := tx.Exec(`INSERT INTO customer_payments (customer_id, amount, note, paid_at) VALUES (?,?,?,?)`,
+		id, in.Amount, in.Note, now()); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+
+	var payable, received float64
+	var cnt int
+	_ = s.db.QueryRow(`SELECT COUNT(*), COALESCE(SUM(payable),0), COALESCE(SUM(received),0)
+		FROM settlements WHERE customer_id = ?`, id).Scan(&cnt, &payable, &received)
+
+	writeJSON(w, 200, map[string]any{
+		"status":      "ok",
+		"amount":      in.Amount,
+		"allocations": allocs,
+		"payable":     round2(payable),
+		"received":    round2(received),
+		"outstanding": round2(payable - received),
+	})
+}
+
+// listCustomerPayments 收款记录
+func (s *Server) listCustomerPayments(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		fail(w, 400, "无效 ID")
+		return
+	}
+	rows, err := s.db.Query(`SELECT id, amount, note, paid_at FROM customer_payments
+		WHERE customer_id = ? ORDER BY id DESC LIMIT 200`, id)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	defer rows.Close()
+	out := make([]map[string]any, 0)
+	for rows.Next() {
+		var pid int64
+		var amount float64
+		var note, paidAt string
+		if err := rows.Scan(&pid, &amount, &note, &paidAt); err != nil {
+			fail(w, 500, err.Error())
+			return
+		}
+		out = append(out, map[string]any{"id": pid, "amount": amount, "note": note, "paid_at": paidAt})
+	}
+	writeJSON(w, 200, out)
+}
+
+// money2 金额格式化（两位小数，不带符号）
+func money2(v float64) string {
+	return strconv.FormatFloat(round2(v), 'f', 2, 64)
 }

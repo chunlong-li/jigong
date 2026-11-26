@@ -351,6 +351,13 @@ export const api = {
   createCustomer: (c: Partial<Customer>) => post<Customer>('/api/customers', c),
   updateCustomer: (id: number, c: Partial<Customer>) => put<Customer>(`/api/customers/${id}`, c),
   deleteCustomer: (id: number) => del<{ status: string }>(`/api/customers/${id}`),
+  receivePayment: (id: number, amount: number, note = '') =>
+    post<{ status: string; amount: number; allocations: { settle_no: string; amount: number }[]; outstanding: number }>(
+      `/api/customers/${id}/receive`,
+      { amount, note },
+    ),
+  customerPayments: (id: number) =>
+    get<{ id: number; amount: number; note: string; paid_at: string }[]>(`/api/customers/${id}/payments`),
 
   quotations: (projectId?: number, completed?: 0 | 1) => {
     const qs = new URLSearchParams()
