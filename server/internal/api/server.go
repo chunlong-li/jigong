@@ -141,6 +141,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/settlements/{id}", s.updateSettlement)
 	mux.HandleFunc("PUT /api/settlements/{id}/received", s.updateSettlementReceived)
 	mux.HandleFunc("GET /api/settlements/{id}/payments", s.listSettlementPayments)
+	mux.HandleFunc("PUT /api/settlements/{id}/payments/{pid}", s.updateSettlementPayment)
+	mux.HandleFunc("DELETE /api/settlements/{id}/payments/{pid}", s.deleteSettlementPayment)
 	mux.HandleFunc("POST /api/settlements/{id}/settle", s.settleSettlement)
 	mux.HandleFunc("GET /api/settlements/{id}/excel", s.exportSettlement)
 

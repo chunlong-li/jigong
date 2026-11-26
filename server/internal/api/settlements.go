@@ -542,3 +542,119 @@ func (s *Server) settleSettlement(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, out)
 }
+
+// updateSettlementPayment 修改一条已收记录（改金额会同步调整结算单已收金额）。
+func (s *Server) updateSettlementPayment(w http.ResponseWriter, r *http.Request) {
+	sid := r.PathValue("id")
+	pid := r.PathValue("pid")
+	var sID, pID int64
+	if _, err := fmt.Sscanf(sid, "%d", &sID); err != nil {
+		fail(w, 400, "无效结算单 ID")
+		return
+	}
+	if _, err := fmt.Sscanf(pid, "%d", &pID); err != nil {
+		fail(w, 400, "无效记录 ID")
+		return
+	}
+	var in struct {
+		Amount float64 `json:"amount"`
+		Note   string  `json:"note"`
+	}
+	if err := decode(r, &in); err != nil {
+		fail(w, 400, "请求格式错误")
+		return
+	}
+
+	var settled bool
+	if err := s.db.QueryRow(`SELECT COALESCE(settled,0) FROM settlements WHERE id = ?`, sID).Scan(&settled); err != nil {
+		fail(w, 404, "结算单不存在")
+		return
+	}
+	if settled {
+		fail(w, 409, "该结算单已结清，不能再修改已收记录")
+		return
+	}
+
+	var oldAmount float64
+	var oldNote string
+	if err := s.db.QueryRow(`SELECT amount, note FROM settlement_payments WHERE id = ? AND settlement_id = ?`, pID, sID).
+		Scan(&oldAmount, &oldNote); err != nil {
+		fail(w, 404, "记录不存在")
+		return
+	}
+
+	delta := round2(in.Amount - oldAmount)
+	tx, err := s.db.Begin()
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE settlement_payments SET amount = ?, note = ? WHERE id = ?`, round2(in.Amount), in.Note, pID); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	res, err := tx.Exec(`UPDATE settlements SET received = ROUND(received + ?, 2) WHERE id = ? AND ROUND(received + ?, 2) >= 0`,
+		delta, sID, delta)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		fail(w, 400, "修改后已收金额会变成负数，已取消")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"status": "ok", "delta": delta})
+}
+
+// deleteSettlementPayment 删除一条已收记录（同步冲减结算单已收）。
+func (s *Server) deleteSettlementPayment(w http.ResponseWriter, r *http.Request) {
+	sid := r.PathValue("id")
+	pid := r.PathValue("pid")
+	var sID, pID int64
+	if _, err := fmt.Sscanf(sid, "%d", &sID); err != nil {
+		fail(w, 400, "无效结算单 ID")
+		return
+	}
+	if _, err := fmt.Sscanf(pid, "%d", &pID); err != nil {
+		fail(w, 400, "无效记录 ID")
+		return
+	}
+	var settled bool
+	if err := s.db.QueryRow(`SELECT COALESCE(settled,0) FROM settlements WHERE id = ?`, sID).Scan(&settled); err != nil {
+		fail(w, 404, "结算单不存在")
+		return
+	}
+	if settled {
+		fail(w, 409, "该结算单已结清，不能再删除已收记录")
+		return
+	}
+	var amount float64
+	if err := s.db.QueryRow(`SELECT amount FROM settlement_payments WHERE id = ? AND settlement_id = ?`, pID, sID).Scan(&amount); err != nil {
+		fail(w, 404, "记录不存在")
+		return
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM settlement_payments WHERE id = ?`, pID); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	if _, err := tx.Exec(`UPDATE settlements SET received = ROUND(received - ?, 2) WHERE id = ?`, amount, sID); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "ok"})
+}

@@ -395,6 +395,10 @@ export const api = {
   deleteSettlement: (id: number) => del<{ status: string }>(`/api/settlements/${id}`),
   updateSettlementReceived: (id: number, received: number, note = '') =>
     put<{ status: string; received: number }>(`/api/settlements/${id}/received`, { received, note }),
+  updateSettlementPayment: (sid: number, pid: number, amount: number, note: string) =>
+    put<{ status: string; delta: number }>(`/api/settlements/${sid}/payments/${pid}`, { amount, note }),
+  deleteSettlementPayment: (sid: number, pid: number) =>
+    del<{ status: string }>(`/api/settlements/${sid}/payments/${pid}`),
   settlementPayments: (id: number) =>
     get<{ id: number; amount: number; source: string; note: string; paid_at: string }[]>(
       `/api/settlements/${id}/payments`,

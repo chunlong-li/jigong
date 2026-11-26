@@ -255,6 +255,22 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="logEditDialog" title="修改已收记录" width="420px" append-to-body>
+      <el-form label-width="80px">
+        <el-form-item label="金额">
+          <el-input-number v-model="logEditAmount" :precision="2" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="logEditNote" />
+        </el-form-item>
+      </el-form>
+      <div class="form-tip">改金额会同步调整这张结算单的已收金额（按差额）。</div>
+      <template #footer>
+        <el-button @click="logEditDialog = false">取消</el-button>
+        <el-button type="primary" :loading="logSaving" @click="saveEditLog">保存</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="receivedDialog" :title="settleAfterReceived ? '登记已收并结清' : '登记已收金额'" width="420px">
       <el-alert
         v-if="settleAfterReceived"
@@ -297,6 +313,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="note" label="备注" show-overflow-tooltip />
+        <el-table-column label="操作" width="110" align="right">
+          <template #default="{ row }">
+            <el-button link type="primary" :disabled="!!receivedRow?.settled" @click="openEditLog(row)">编辑</el-button>
+            <el-button link type="danger" :disabled="!!receivedRow?.settled" @click="removeLog(row)">删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <template #footer>
         <el-button @click="receivedDialog = false">取消</el-button>
@@ -851,6 +873,70 @@ const paymentLogs = ref<{ id: number; amount: number; source: string; note: stri
 function sourceLabel(src: string) {
   if (src === 'customer') return '客户已收'
   return '手动'
+}
+
+const logEditDialog = ref(false)
+const logEditId = ref(0)
+const logEditAmount = ref(0)
+const logEditNote = ref('')
+const logSaving = ref(false)
+
+function openEditLog(row: { id: number; amount: number; note: string }) {
+  logEditId.value = row.id
+  logEditAmount.value = Number(row.amount || 0)
+  logEditNote.value = row.note || ''
+  logEditDialog.value = true
+}
+
+async function saveEditLog() {
+  if (!receivedRow.value) return
+  const sid = receivedRow.value.id
+  logSaving.value = true
+  try {
+    await api.updateSettlementPayment(sid, logEditId.value, Number(logEditAmount.value || 0), logEditNote.value)
+    ElMessage.success('记录已修改')
+    logEditDialog.value = false
+    await loadPaymentLogs(sid)
+    await refreshOne(sid)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  } finally {
+    logSaving.value = false
+  }
+}
+
+async function removeLog(row: { id: number; amount: number }) {
+  if (!receivedRow.value) return
+  const sid = receivedRow.value.id
+  try {
+    await ElMessageBox.confirm(`确定删除这条已收记录（¥${money(row.amount)}）？已收金额会同步减少。`, '删除记录', {
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  try {
+    await api.deleteSettlementPayment(sid, row.id)
+    ElMessage.success('记录已删除')
+    await loadPaymentLogs(sid)
+    await refreshOne(sid)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
+// 刷新当前结算单与该记录行
+async function refreshOne(id: number) {
+  try {
+    const fresh = await api.settlement(id)
+    receivedCurrent.value = Number(fresh.received || 0)
+    if (receivedRow.value) {
+      receivedRow.value = { ...receivedRow.value, received: fresh.received }
+    }
+    await load()
+  } catch {
+    /* ignore */
+  }
 }
 
 async function loadPaymentLogs(id: number) {
