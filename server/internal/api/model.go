@@ -106,6 +106,7 @@ type Customer struct {
 	Address     string  `json:"address"`
 	Remark      string  `json:"remark"`
 	SettleCount int     `json:"settle_count"`
+	OpenCount   int     `json:"open_count"`
 	Payable     float64 `json:"payable"`
 	Received    float64 `json:"received"`
 	Outstanding float64 `json:"outstanding"`

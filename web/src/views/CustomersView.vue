@@ -15,6 +15,7 @@
       <div class="stat-row">
         <span>客户数：<b>{{ list.length }}</b></span>
         <span>未结款合计：<b class="money warn">¥ {{ money(totalOutstanding) }}</b></span>
+        <span>未结单数：<b>{{ totalOpen }}</b></span>
         <span>累计应付：<span class="money">¥ {{ money(totalPayable) }}</span></span>
         <span>累计实收：<span class="money pos">¥ {{ money(totalReceived) }}</span></span>
       </div>
@@ -30,8 +31,14 @@
         <el-table-column prop="contact" label="联系人" width="110" show-overflow-tooltip />
         <el-table-column prop="phone" label="电话" width="130" show-overflow-tooltip />
         <el-table-column prop="address" label="地址" min-width="180" show-overflow-tooltip />
-        <el-table-column label="结算单" width="90" align="center">
+        <el-table-column label="结算单" width="80" align="center">
           <template #default="{ row }">{{ row.settle_count }}</template>
+        </el-table-column>
+        <el-table-column label="未结单" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.open_count > 0" size="small" type="warning" effect="plain">{{ row.open_count }}</el-tag>
+            <span v-else class="muted">0</span>
+          </template>
         </el-table-column>
         <el-table-column label="应付" width="110" align="right">
           <template #default="{ row }">{{ money(row.payable) }}</template>
@@ -151,6 +158,7 @@ const form = reactive<Partial<Customer>>({
 
 const categories = computed(() => [...new Set(list.value.map((c) => c.category).filter(Boolean))])
 const totalOutstanding = computed(() => Number(list.value.reduce((s, c) => s + (c.outstanding || 0), 0).toFixed(2)))
+const totalOpen = computed(() => list.value.reduce((s, c) => s + (c.open_count || 0), 0))
 const totalPayable = computed(() => Number(list.value.reduce((s, c) => s + (c.payable || 0), 0).toFixed(2)))
 const totalReceived = computed(() => Number(list.value.reduce((s, c) => s + (c.received || 0), 0).toFixed(2)))
 

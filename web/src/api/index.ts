@@ -126,6 +126,7 @@ export interface Customer {
   address: string
   remark: string
   settle_count: number
+  open_count: number
   payable: number
   received: number
   outstanding: number
