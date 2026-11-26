@@ -268,8 +268,16 @@
         <el-form-item label="应付金额">
           <span class="money">¥ {{ money(receivedRow?.payable) }}</span>
         </el-form-item>
-        <el-form-item label="实收金额">
-          <el-input-number v-model="receivedValue" :min="0" :precision="2" style="width: 100%" />
+        <el-form-item label="当前实收">
+          <span class="money pos">¥ {{ money(receivedCurrent) }}</span>
+        </el-form-item>
+        <el-form-item label="本次收款">
+          <el-input-number v-model="receivedValue" :precision="2" :step="100" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="">
+          <span class="form-tip">
+            每次填多少就加多少（可填负数冲减），累计后会显示在下面记录里
+          </span>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="receivedNote" placeholder="如：现金 / 微信 / 补差额" />
@@ -837,6 +845,7 @@ const receivedDialog = ref(false)
 const receivedRow = ref<Settlement | null>(null)
 const receivedValue = ref(0)
 const receivedNote = ref('')
+const receivedCurrent = ref(0)
 const paymentLogs = ref<{ id: number; amount: number; source: string; note: string; paid_at: string }[]>([])
 
 function sourceLabel(src: string) {
@@ -858,7 +867,8 @@ const settleAfterReceived = ref(false)
 function openReceived(row: Settlement) {
   settleAfterReceived.value = false
   receivedRow.value = row
-  receivedValue.value = row.received ?? row.payable ?? 0
+  receivedCurrent.value = Number(row.received || 0)
+  receivedValue.value = 0
   receivedNote.value = ''
   paymentLogs.value = []
   loadPaymentLogs(row.id)
@@ -869,7 +879,8 @@ function openReceived(row: Settlement) {
 function openReceivedForSettle(row: Settlement) {
   settleAfterReceived.value = true
   receivedRow.value = row
-  receivedValue.value = Number(row.received) > 0 ? Number(row.received) : Number(row.payable || 0)
+  receivedCurrent.value = Number(row.received || 0)
+  receivedValue.value = Math.max(0, Number((Number(row.payable || 0) - receivedCurrent.value).toFixed(2)))
   receivedNote.value = '结清登记'
   paymentLogs.value = []
   loadPaymentLogs(row.id)
@@ -881,7 +892,20 @@ async function saveReceived() {
   receivedSaving.value = true
   try {
     const id = receivedRow.value.id
-    await api.updateSettlementReceived(id, Number(receivedValue.value || 0), receivedNote.value)
+    const add = Number(receivedValue.value || 0)
+    if (Math.abs(add) < 0.005) {
+      ElMessage.warning('本次收款不能为 0')
+      receivedSaving.value = false
+      return
+    }
+    const total = Number((receivedCurrent.value + add).toFixed(2))
+    if (total < 0) {
+      ElMessage.warning('冲减后实收不能为负')
+      receivedSaving.value = false
+      return
+    }
+    receivedNote.value = receivedNote.value || (add >= 0 ? '本次收款' : '冲减')
+    await api.updateSettlementReceived(id, total, receivedNote.value)
     receivedDialog.value = false
     if (settleAfterReceived.value) {
       settleAfterReceived.value = false
