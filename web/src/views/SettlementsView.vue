@@ -25,7 +25,7 @@
         <el-table-column label="应付金额" width="120" align="right">
           <template #default="{ row }"><span class="money">{{ money(row.payable) }}</span></template>
         </el-table-column>
-        <el-table-column label="实收金额" width="120" align="right">
+        <el-table-column label="已收金额" width="120" align="right">
           <template #default="{ row }">
             <span class="money" :style="{ color: row.received < row.payable ? '#e6a23c' : '' }">
               {{ money(row.received) }}
@@ -46,7 +46,7 @@
             <el-button link :type="row.settled ? 'info' : 'warning'" :disabled="!!row.settled" @click="settle(row)">
               {{ row.settled ? '已结' : '已结' }}
             </el-button>
-            <el-button link type="warning" :disabled="!!row.settled" @click="openReceived(row)">实收</el-button>
+            <el-button link type="warning" :disabled="!!row.settled" @click="openReceived(row)">已收</el-button>
             <el-button link type="success" @click="exportExcel(row)">导出 Excel</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
@@ -255,20 +255,20 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="receivedDialog" :title="settleAfterReceived ? '登记实收并结清' : '登记实收金额'" width="420px">
+    <el-dialog v-model="receivedDialog" :title="settleAfterReceived ? '登记已收并结清' : '登记已收金额'" width="420px">
       <el-alert
         v-if="settleAfterReceived"
         type="info"
         :closable="false"
         show-icon
-        title="这张结算单还没登记实收，保存后会自动标记为已结"
+        title="这张结算单还没登记已收，保存后会自动标记为已结"
         style="margin-bottom: 12px"
       />
       <el-form label-width="90px">
         <el-form-item label="应付金额">
           <span class="money">¥ {{ money(receivedRow?.payable) }}</span>
         </el-form-item>
-        <el-form-item label="当前实收">
+        <el-form-item label="当前已收">
           <span class="money pos">¥ {{ money(receivedCurrent) }}</span>
         </el-form-item>
         <el-form-item label="本次收款">
@@ -283,8 +283,8 @@
           <el-input v-model="receivedNote" placeholder="如：现金 / 微信 / 补差额" />
         </el-form-item>
       </el-form>
-      <el-divider content-position="left">实收记录</el-divider>
-      <el-table :data="paymentLogs" size="small" border max-height="220" empty-text="还没有实收记录">
+      <el-divider content-position="left">已收记录</el-divider>
+      <el-table :data="paymentLogs" size="small" border max-height="220" empty-text="还没有已收记录">
         <el-table-column prop="paid_at" label="时间" width="160" />
         <el-table-column label="金额" width="110" align="right">
           <template #default="{ row }">
@@ -317,7 +317,7 @@
         <el-descriptions-item label="应付金额">
           <span class="money pos">¥ {{ money(viewRow?.payable) }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="实收金额">
+        <el-descriptions-item label="已收金额">
           <span class="money">¥ {{ money(viewRow?.received) }}</span>
         </el-descriptions-item>
       </el-descriptions>
@@ -900,7 +900,7 @@ async function saveReceived() {
     }
     const total = Number((receivedCurrent.value + add).toFixed(2))
     if (total < 0) {
-      ElMessage.warning('冲减后实收不能为负')
+      ElMessage.warning('冲减后已收金额不能为负')
       receivedSaving.value = false
       return
     }
@@ -911,7 +911,7 @@ async function saveReceived() {
       settleAfterReceived.value = false
       await doSettle(id)
     } else {
-      ElMessage.success('实收金额已保存')
+      ElMessage.success('已收金额已保存')
       await load()
     }
   } catch (e: any) {

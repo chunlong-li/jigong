@@ -17,7 +17,7 @@
         <span>未结款合计：<b class="money warn">¥ {{ money(totalOutstanding) }}</b></span>
         <span>未结单数：<b>{{ totalOpen }}</b></span>
         <span>未结应付：<span class="money">¥ {{ money(totalOpenPayable) }}</span></span>
-        <span>未结实收：<span class="money pos">¥ {{ money(totalOpenReceived) }}</span></span>
+        <span>未结已收：<span class="money pos">¥ {{ money(totalOpenReceived) }}</span></span>
       </div>
 
       <el-table :data="list" v-loading="loading" empty-text="还没有客户，点右上角新增">
@@ -43,7 +43,7 @@
         <el-table-column label="未结应付" width="115" align="right">
           <template #default="{ row }">{{ money(row.open_payable) }}</template>
         </el-table-column>
-        <el-table-column label="未结实收" width="115" align="right">
+        <el-table-column label="未结已收" width="115" align="right">
           <template #default="{ row }">{{ money(row.open_received) }}</template>
         </el-table-column>
         <el-table-column label="未结款" width="120" align="right">
@@ -119,7 +119,7 @@
         </el-form-item>
       </el-form>
       <div class="form-tip">
-        收款后按最早未结的结算单依次冲抵实收，未结款自动扣减。
+        收款后按最早未结的结算单依次冲抵已收金额，未结款自动扣减。
       </div>
       <template #footer>
         <el-button @click="receiveDialog = false">取消</el-button>
