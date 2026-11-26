@@ -20,6 +20,10 @@
       <el-icon><PriceTag /></el-icon>
       <span>价格明细</span>
     </el-menu-item>
+    <el-menu-item index="/customers">
+      <el-icon><Avatar /></el-icon>
+      <span>客户</span>
+    </el-menu-item>
     <el-menu-item index="/quotations">
       <el-icon><Document /></el-icon>
       <span>报价单</span>

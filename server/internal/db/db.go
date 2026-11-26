@@ -164,6 +164,18 @@ CREATE TABLE IF NOT EXISTS materials (
 );
 CREATE INDEX IF NOT EXISTS idx_materials_project_date ON materials(project_id, in_date);
 
+CREATE TABLE IF NOT EXISTS customers (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	name       TEXT NOT NULL,
+	category   TEXT NOT NULL DEFAULT '',
+	contact    TEXT NOT NULL DEFAULT '',
+	phone      TEXT NOT NULL DEFAULT '',
+	address    TEXT NOT NULL DEFAULT '',
+	remark     TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
+
 CREATE TABLE IF NOT EXISTS quotations (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
 	project_id    INTEGER REFERENCES projects(id) ON DELETE CASCADE,
@@ -515,6 +527,11 @@ func migrateWorkers(d *sql.DB) error {
 			return err
 		}
 	}
+	if !stcols["customer_id"] {
+		if _, err := d.Exec(`ALTER TABLE settlements ADD COLUMN customer_id INTEGER DEFAULT NULL`); err != nil {
+			return err
+		}
+	}
 	if !stcols["settled"] {
 		if _, err := d.Exec(`ALTER TABLE settlements ADD COLUMN settled INTEGER NOT NULL DEFAULT 0`); err != nil {
 			return err
@@ -528,6 +545,11 @@ func migrateWorkers(d *sql.DB) error {
 	qcols, err := tableColumns(d, "quotations")
 	if err != nil {
 		return err
+	}
+	if !qcols["customer_id"] {
+		if _, err := d.Exec(`ALTER TABLE quotations ADD COLUMN customer_id INTEGER DEFAULT NULL`); err != nil {
+			return err
+		}
 	}
 	if !qcols["completed"] {
 		if _, err := d.Exec(`ALTER TABLE quotations ADD COLUMN completed INTEGER NOT NULL DEFAULT 0`); err != nil {

@@ -23,7 +23,7 @@ func (s *Server) listQuotations(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "COALESCE(q.completed,0) = 1")
 	}
 	sqlStr := `SELECT q.id, COALESCE(q.project_id,0), COALESCE(NULLIF(p.name,''), q.project_name),
-	                  q.room, q.contract_type, q.quote_type, q.quote_no, q.quote_date, q.client, q.title,
+	                  q.room, q.contract_type, q.quote_type, q.customer_id, q.quote_no, q.quote_date, q.client, q.title,
 	                  q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.completed, q.completed_at, q.created_at
 	           FROM quotations q LEFT JOIN projects p ON p.id = q.project_id
 	           WHERE ` + strings.Join(where, " AND ") + `
@@ -39,7 +39,7 @@ func (s *Server) listQuotations(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var x Quotation
 		if err := rows.Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.QuoteType,
-			&x.QuoteNo, &x.QuoteDate, &x.Client, &x.Title, &x.TaxRate, &x.Subtotal, &x.TaxAmount,
+			&x.CustomerID, &x.QuoteNo, &x.QuoteDate, &x.Client, &x.Title, &x.TaxRate, &x.Subtotal, &x.TaxAmount,
 			&x.Total, &x.Remark, &x.Completed, &x.CompletedAt, &x.CreatedAt); err != nil {
 			fail(w, 500, err.Error())
 			return
@@ -132,9 +132,9 @@ func (s *Server) createQuotation(w http.ResponseWriter, r *http.Request) {
 		pid = x.ProjectID
 	}
 	err = tx.QueryRow(`INSERT INTO quotations
-		(project_id, project_name, room, contract_type, quote_type, quote_no, quote_date, client, title,
+		(project_id, project_name, room, contract_type, quote_type, customer_id, quote_no, quote_date, client, title,
 		 tax_rate, subtotal, tax_amount, total, remark, created_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
 		pid, x.ProjectName, x.Room, x.ContractType, x.QuoteType, x.QuoteNo, x.QuoteDate, x.Client, x.Title, x.TaxRate,
 		x.Subtotal, x.TaxAmount, x.Total, x.Remark, t).Scan(&x.ID)
 	if err != nil {
@@ -182,10 +182,10 @@ func (s *Server) getQuotation(w http.ResponseWriter, r *http.Request) {
 func (s *Server) findQuotation(id int64) (Quotation, error) {
 	var x Quotation
 	err := s.db.QueryRow(`SELECT q.id, COALESCE(q.project_id,0),
-		COALESCE(NULLIF(p.name,''), q.project_name), q.room, q.contract_type, q.quote_type, q.quote_no, q.quote_date, q.client,
+		COALESCE(NULLIF(p.name,''), q.project_name), q.room, q.contract_type, q.quote_type, q.customer_id, q.quote_no, q.quote_date, q.client,
 		q.title, q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.completed, q.completed_at, q.created_at
 		FROM quotations q LEFT JOIN projects p ON p.id = q.project_id WHERE q.id = ?`, id).
-		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.QuoteType, &x.QuoteNo, &x.QuoteDate, &x.Client,
+		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.QuoteType, &x.CustomerID, &x.QuoteNo, &x.QuoteDate, &x.Client,
 			&x.Title, &x.TaxRate, &x.Subtotal, &x.TaxAmount, &x.Total, &x.Remark, &x.Completed, &x.CompletedAt, &x.CreatedAt)
 	if err != nil {
 		return x, err

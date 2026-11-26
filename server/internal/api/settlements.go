@@ -17,7 +17,7 @@ func (s *Server) listSettlements(w http.ResponseWriter, r *http.Request) {
 		args = append(args, v)
 	}
 	sqlStr := `SELECT s.id, COALESCE(s.project_id,0), COALESCE(NULLIF(p.name,''), s.project_name),
-	                  s.room, s.contract_type, s.settle_no, s.settle_date, s.period_start,
+	                  s.room, s.customer_id, s.contract_type, s.settle_no, s.settle_date, s.period_start,
 	                  s.period_end, s.payee, s.title, s.work_amount, s.material_amount,
 	                  s.deduction, s.payable, s.received, s.remark, s.settled, s.settled_at, s.created_at
 	           FROM settlements s LEFT JOIN projects p ON p.id = s.project_id
@@ -33,7 +33,7 @@ func (s *Server) listSettlements(w http.ResponseWriter, r *http.Request) {
 	out := make([]Settlement, 0)
 	for rows.Next() {
 		var x Settlement
-		if err := rows.Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.SettleNo, &x.SettleDate,
+		if err := rows.Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.CustomerID, &x.ContractType, &x.SettleNo, &x.SettleDate,
 			&x.PeriodStart, &x.PeriodEnd, &x.Payee, &x.Title, &x.WorkAmount, &x.MaterialAmount,
 			&x.Deduction, &x.Payable, &x.Received, &x.Remark, &x.Settled, &x.SettledAt, &x.CreatedAt); err != nil {
 			fail(w, 500, err.Error())
@@ -227,10 +227,10 @@ func (s *Server) createSettlement(w http.ResponseWriter, r *http.Request) {
 		pid = x.ProjectID
 	}
 	err = tx.QueryRow(`INSERT INTO settlements
-		(project_id, project_name, room, contract_type, settle_no, settle_date, period_start, period_end,
+		(project_id, project_name, room, customer_id, contract_type, settle_no, settle_date, period_start, period_end,
 		 payee, title, work_amount, material_amount, deduction, payable, received, remark, created_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
-		pid, x.ProjectName, x.Room, x.ContractType, x.SettleNo, x.SettleDate, x.PeriodStart, x.PeriodEnd,
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+		pid, x.ProjectName, x.Room, nullableID(x.CustomerID), x.ContractType, x.SettleNo, x.SettleDate, x.PeriodStart, x.PeriodEnd,
 		x.Payee, x.Title, x.WorkAmount, x.MaterialAmount, x.Deduction, x.Payable, x.Received, x.Remark, t).Scan(&x.ID)
 	if err != nil {
 		fail(w, 500, err.Error())
@@ -277,11 +277,11 @@ func (s *Server) getSettlement(w http.ResponseWriter, r *http.Request) {
 func (s *Server) findSettlement(id int64) (Settlement, error) {
 	var x Settlement
 	err := s.db.QueryRow(`SELECT s.id, COALESCE(s.project_id,0),
-		COALESCE(NULLIF(p.name,''), s.project_name), s.room, s.contract_type, s.settle_no, s.settle_date,
+		COALESCE(NULLIF(p.name,''), s.project_name), s.room, s.customer_id, s.contract_type, s.settle_no, s.settle_date,
 		s.period_start, s.period_end, s.payee, s.title, s.work_amount, s.material_amount,
 		s.deduction, s.payable, s.received, s.remark, s.settled, s.settled_at, s.created_at
 		FROM settlements s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?`, id).
-		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.SettleNo, &x.SettleDate, &x.PeriodStart,
+		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.CustomerID, &x.ContractType, &x.SettleNo, &x.SettleDate, &x.PeriodStart,
 			&x.PeriodEnd, &x.Payee, &x.Title, &x.WorkAmount, &x.MaterialAmount,
 			&x.Deduction, &x.Payable, &x.Received, &x.Remark, &x.Settled, &x.SettledAt, &x.CreatedAt)
 	if err != nil {
@@ -432,11 +432,11 @@ func (s *Server) updateSettlement(w http.ResponseWriter, r *http.Request) {
 		pid = x.ProjectID
 	}
 	if _, err := tx.Exec(`UPDATE settlements SET
-			project_id=?, project_name=?, room=?, contract_type=?, settle_no=?, settle_date=?,
+			project_id=?, project_name=?, room=?, customer_id=?, contract_type=?, settle_no=?, settle_date=?,
 			period_start=?, period_end=?, payee=?, title=?, work_amount=?, material_amount=?,
 			deduction=?, payable=?, received=?, remark=?
 		WHERE id=?`,
-		pid, x.ProjectName, x.Room, x.ContractType, x.SettleNo, x.SettleDate,
+		pid, x.ProjectName, x.Room, nullableID(x.CustomerID), x.ContractType, x.SettleNo, x.SettleDate,
 		x.PeriodStart, x.PeriodEnd, x.Payee, x.Title, x.WorkAmount, x.MaterialAmount,
 		x.Deduction, x.Payable, x.Received, x.Remark, id); err != nil {
 		fail(w, 500, err.Error())

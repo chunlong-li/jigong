@@ -118,6 +118,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("PUT /api/materials/{id}", s.updateMaterial)
 	mux.HandleFunc("DELETE /api/materials/{id}", s.deleteMaterial)
 
+	mux.HandleFunc("GET /api/customers", s.listCustomers)
+	mux.HandleFunc("POST /api/customers", s.createCustomer)
+	mux.HandleFunc("PUT /api/customers/{id}", s.updateCustomer)
+	mux.HandleFunc("DELETE /api/customers/{id}", s.deleteCustomer)
+
 	mux.HandleFunc("GET /api/quotations", s.listQuotations)
 	mux.HandleFunc("POST /api/quotations", s.createQuotation)
 	mux.HandleFunc("GET /api/quotations/{id}", s.getQuotation)

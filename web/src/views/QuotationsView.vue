@@ -75,7 +75,18 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="客户">
-              <el-input v-model="form.client" placeholder="甲方名称" />
+              <el-select
+                v-model="customerPick"
+                filterable
+                clearable
+                allow-create
+                default-first-option
+                placeholder="选择客户，或直接输入名称"
+                style="width: 100%"
+                @change="onCustomerChange"
+              >
+                <el-option v-for="c in customerOptions" :key="c.id" :label="c.name" :value="c.name" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -180,7 +191,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { api, type PriceItem, type Quotation } from '../api'
+import { api, type Customer, type PriceItem, type Quotation } from '../api'
 import { money, today } from '../utils/format'
 
 interface ItemRow {
@@ -198,6 +209,8 @@ const loading = ref(false)
 const saving = ref(false)
 const dialog = ref(false)
 const editing = ref(false)
+const customerOptions = ref<Customer[]>([])
+const customerPick = ref('')
 const materialPrices = ref<PriceItem[]>([])
 const laborAll = ref<PriceItem[]>([])
 const laborOnly = ref<PriceItem[]>([])
@@ -366,14 +379,16 @@ function openCreate() {
     project_name: '',
     contract_type: '包工包料',
     quote_type: '客户报价',
+    customer_id: 0,
+    client: '',
     quote_no: genNo(),
     quote_date: today(),
-    client: '',
     title: '报价单',
     tax_rate: 0,
     remark: '',
     items: [emptyRow()],
   })
+  customerPick.value = ''
   dialog.value = true
 }
 
@@ -395,6 +410,7 @@ async function openEdit(row: Quotation) {
         path: pathOf(it.name),
       })),
     })
+    customerPick.value = full.client || ''
     dialog.value = true
   } catch (e: any) {
     ElMessage.error(e.message)
@@ -494,5 +510,10 @@ function exportExcel(row: Quotation) {
 onMounted(async () => {
   await loadPrices()
   await load()
+  try {
+    customerOptions.value = await api.customers()
+  } catch {
+    /* ignore */
+  }
 })
 </script>

@@ -110,8 +110,19 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="收款方">
-              <el-input v-model="form.payee" placeholder="甲方 / 甲方代表" />
+            <el-form-item label="客户（收款方）">
+              <el-select
+                v-model="customerPick"
+                filterable
+                clearable
+                allow-create
+                default-first-option
+                placeholder="选择客户，或直接输入名称"
+                style="width: 100%"
+                @change="onCustomerChange"
+              >
+                <el-option v-for="c in customerOptions" :key="c.id" :label="c.name" :value="c.name" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -304,7 +315,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { api, type PriceItem, type Project, type Quotation, type Settlement } from '../api'
+import { api, type Customer, type PriceItem, type Project, type Quotation, type Settlement } from '../api'
 import { money, monthStart, today } from '../utils/format'
 
 interface Row {
@@ -330,6 +341,8 @@ const viewDialog = ref(false)
 const viewRow = ref<Settlement | null>(null)
 const editingId = ref<number | null>(null)
 // 结算方式：手工 / 按报价单
+const customerOptions = ref<Customer[]>([])
+const customerPick = ref('')
 const sourceMode = ref<'manual' | 'quotation'>('manual')
 const quotationId = ref<number | undefined>(undefined)
 const availableQuotations = ref<Quotation[]>([])
@@ -606,6 +619,8 @@ async function onQuotationChange(id: number) {
     form.project_name = q.project_name || ''
     form.contract_type = q.contract_type || form.contract_type
     form.payee = q.client || form.payee
+    form.customer_id = q.customer_id || 0
+    customerPick.value = q.client || ''
     if (q.project_id) ratesFor.value = 0
     form.items = (q.items || []).map((it) => ({
       room: it.room,
@@ -625,6 +640,7 @@ async function onQuotationChange(id: number) {
 
 async function openCreate() {
   editingId.value = null
+  customerPick.value = ''
   sourceMode.value = 'manual'
   quotationId.value = undefined
   Object.assign(form, {
@@ -697,6 +713,7 @@ async function openEdit(row: Settlement) {
         unit_price: it.unit_price,
       })),
     })
+    customerPick.value = x.payee || ''
     period.value = [x.period_start, x.period_end]
     ratesFor.value = x.project_id || 0
     dialog.value = true
@@ -786,6 +803,14 @@ async function save() {
   }
 }
 
+// 客户：选已有带 customer_id，手输只存名字（写进 payee）
+function onCustomerChange(v: string) {
+  const name = (v || '').trim()
+  form.payee = name
+  const hit = customerOptions.value.find((c) => c.name === name)
+  form.customer_id = hit ? hit.id : 0
+}
+
 function addItem() {
   form.items.push(emptyRow())
 }
@@ -863,11 +888,12 @@ function exportExcel(row: Settlement) {
 
 onMounted(async () => {
   try {
-    ;[projects.value, materialPrices.value, laborAll.value, laborOnly.value] = await Promise.all([
+    ;[projects.value, materialPrices.value, laborAll.value, laborOnly.value, customerOptions.value] = await Promise.all([
       api.projects(),
       api.priceItems('material'),
       api.priceItems('labor_all'),
       api.priceItems('labor_only'),
+      api.customers(),
     ])
   } catch {
     /* ignore */

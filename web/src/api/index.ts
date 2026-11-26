@@ -117,6 +117,21 @@ export interface Material {
   created_at: string
 }
 
+export interface Customer {
+  id: number
+  name: string
+  category: string
+  contact: string
+  phone: string
+  address: string
+  remark: string
+  settle_count: number
+  payable: number
+  received: number
+  outstanding: number
+  created_at: string
+}
+
 export interface QuotationItem {
   id?: number
   room: string
@@ -136,6 +151,7 @@ export interface Quotation {
   room: string
   contract_type: string
   quote_type: string
+  customer_id: number
   quote_no: string
   quote_date: string
   client: string
@@ -169,6 +185,7 @@ export interface Settlement {
   project_id: number
   project_name: string
   room: string
+  customer_id: number
   settle_no: string
   settle_date: string
   period_start: string
@@ -329,6 +346,11 @@ export const api = {
   createMaterial: (m: Partial<Material>) => post<Material>('/api/materials', m),
   updateMaterial: (id: number, m: Partial<Material>) => put<{ status: string }>(`/api/materials/${id}`, m),
   deleteMaterial: (id: number) => del<{ status: string }>(`/api/materials/${id}`),
+
+  customers: () => get<Customer[]>('/api/customers'),
+  createCustomer: (c: Partial<Customer>) => post<Customer>('/api/customers', c),
+  updateCustomer: (id: number, c: Partial<Customer>) => put<Customer>(`/api/customers/${id}`, c),
+  deleteCustomer: (id: number) => del<{ status: string }>(`/api/customers/${id}`),
 
   quotations: (projectId?: number, completed?: 0 | 1) => {
     const qs = new URLSearchParams()

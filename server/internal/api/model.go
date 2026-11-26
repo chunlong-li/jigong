@@ -96,6 +96,22 @@ type QuotationItem struct {
 	SortOrder  int     `json:"sort_order"`
 }
 
+// Customer 客户信息，附结算汇总（未结款等）。
+type Customer struct {
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Category    string  `json:"category"`
+	Contact     string  `json:"contact"`
+	Phone       string  `json:"phone"`
+	Address     string  `json:"address"`
+	Remark      string  `json:"remark"`
+	SettleCount int     `json:"settle_count"`
+	Payable     float64 `json:"payable"`
+	Received    float64 `json:"received"`
+	Outstanding float64 `json:"outstanding"`
+	CreatedAt   string  `json:"created_at"`
+}
+
 type Quotation struct {
 	ID         int64           `json:"id"`
 	ProjectID    int64          `json:"project_id"`
@@ -103,6 +119,7 @@ type Quotation struct {
 	Room         string         `json:"room"`
 	ContractType string         `json:"contract_type"`
 	QuoteType    string         `json:"quote_type"`
+	CustomerID int64           `json:"customer_id"`
 	QuoteNo    string          `json:"quote_no"`
 	QuoteDate  string          `json:"quote_date"`
 	Client     string          `json:"client"`
@@ -136,6 +153,7 @@ type Settlement struct {
 	ProjectID      int64            `json:"project_id"`
 	ProjectName    string           `json:"project_name"`
 	Room           string           `json:"room"`
+	CustomerID     int64            `json:"customer_id"`
 	SettleNo       string           `json:"settle_no"`
 	SettleDate     string           `json:"settle_date"`
 	PeriodStart    string           `json:"period_start"`
