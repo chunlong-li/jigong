@@ -23,7 +23,7 @@ func (s *Server) listQuotations(w http.ResponseWriter, r *http.Request) {
 		where = append(where, "COALESCE(q.completed,0) = 1")
 	}
 	sqlStr := `SELECT q.id, COALESCE(q.project_id,0), COALESCE(NULLIF(p.name,''), q.project_name),
-	                  q.room, q.contract_type, q.quote_type, q.customer_id, q.quote_no, q.quote_date, q.client, q.title,
+	                  q.room, q.contract_type, q.quote_type, COALESCE(q.customer_id,0), q.quote_no, q.quote_date, q.client, q.title,
 	                  q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.completed, q.completed_at, q.created_at
 	           FROM quotations q LEFT JOIN projects p ON p.id = q.project_id
 	           WHERE ` + strings.Join(where, " AND ") + `
@@ -135,7 +135,7 @@ func (s *Server) createQuotation(w http.ResponseWriter, r *http.Request) {
 		(project_id, project_name, room, contract_type, quote_type, customer_id, quote_no, quote_date, client, title,
 		 tax_rate, subtotal, tax_amount, total, remark, created_at)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
-		pid, x.ProjectName, x.Room, x.ContractType, x.QuoteType, x.QuoteNo, x.QuoteDate, x.Client, x.Title, x.TaxRate,
+		pid, x.ProjectName, x.Room, x.ContractType, x.QuoteType, nullableID(x.CustomerID), x.QuoteNo, x.QuoteDate, x.Client, x.Title, x.TaxRate,
 		x.Subtotal, x.TaxAmount, x.Total, x.Remark, t).Scan(&x.ID)
 	if err != nil {
 		fail(w, 500, err.Error())
@@ -182,7 +182,7 @@ func (s *Server) getQuotation(w http.ResponseWriter, r *http.Request) {
 func (s *Server) findQuotation(id int64) (Quotation, error) {
 	var x Quotation
 	err := s.db.QueryRow(`SELECT q.id, COALESCE(q.project_id,0),
-		COALESCE(NULLIF(p.name,''), q.project_name), q.room, q.contract_type, q.quote_type, q.customer_id, q.quote_no, q.quote_date, q.client,
+		COALESCE(NULLIF(p.name,''), q.project_name), q.room, q.contract_type, q.quote_type, COALESCE(q.customer_id,0), q.quote_no, q.quote_date, q.client,
 		q.title, q.tax_rate, q.subtotal, q.tax_amount, q.total, q.remark, q.completed, q.completed_at, q.created_at
 		FROM quotations q LEFT JOIN projects p ON p.id = q.project_id WHERE q.id = ?`, id).
 		Scan(&x.ID, &x.ProjectID, &x.ProjectName, &x.Room, &x.ContractType, &x.QuoteType, &x.CustomerID, &x.QuoteNo, &x.QuoteDate, &x.Client,
@@ -221,9 +221,9 @@ func (s *Server) updateQuotation(w http.ResponseWriter, r *http.Request) {
 		pidUpd = x.ProjectID
 	}
 	res, err := tx.Exec(`UPDATE quotations SET project_id=?, project_name=?, room=?, contract_type=?, quote_type=?,
-		quote_no=?, quote_date=?, client=?, title=?, tax_rate=?, subtotal=?, tax_amount=?, total=?, remark=?
+		customer_id=?, quote_no=?, quote_date=?, client=?, title=?, tax_rate=?, subtotal=?, tax_amount=?, total=?, remark=?
 		WHERE id=?`,
-		pidUpd, x.ProjectName, x.Room, x.ContractType, x.QuoteType, x.QuoteNo, x.QuoteDate, x.Client, x.Title, x.TaxRate,
+		pidUpd, x.ProjectName, x.Room, x.ContractType, x.QuoteType, nullableID(x.CustomerID), x.QuoteNo, x.QuoteDate, x.Client, x.Title, x.TaxRate,
 		x.Subtotal, x.TaxAmount, x.Total, x.Remark, id)
 	if err != nil {
 		fail(w, 500, err.Error())

@@ -17,7 +17,7 @@ func (s *Server) listSettlements(w http.ResponseWriter, r *http.Request) {
 		args = append(args, v)
 	}
 	sqlStr := `SELECT s.id, COALESCE(s.project_id,0), COALESCE(NULLIF(p.name,''), s.project_name),
-	                  s.room, s.customer_id, s.contract_type, s.settle_no, s.settle_date, s.period_start,
+	                  s.room, COALESCE(s.customer_id,0), s.contract_type, s.settle_no, s.settle_date, s.period_start,
 	                  s.period_end, s.payee, s.title, s.work_amount, s.material_amount,
 	                  s.deduction, s.payable, s.received, s.remark, s.settled, s.settled_at, s.created_at
 	           FROM settlements s LEFT JOIN projects p ON p.id = s.project_id
@@ -277,7 +277,7 @@ func (s *Server) getSettlement(w http.ResponseWriter, r *http.Request) {
 func (s *Server) findSettlement(id int64) (Settlement, error) {
 	var x Settlement
 	err := s.db.QueryRow(`SELECT s.id, COALESCE(s.project_id,0),
-		COALESCE(NULLIF(p.name,''), s.project_name), s.room, s.customer_id, s.contract_type, s.settle_no, s.settle_date,
+		COALESCE(NULLIF(p.name,''), s.project_name), s.room, COALESCE(s.customer_id,0), s.contract_type, s.settle_no, s.settle_date,
 		s.period_start, s.period_end, s.payee, s.title, s.work_amount, s.material_amount,
 		s.deduction, s.payable, s.received, s.remark, s.settled, s.settled_at, s.created_at
 		FROM settlements s LEFT JOIN projects p ON p.id = s.project_id WHERE s.id = ?`, id).
