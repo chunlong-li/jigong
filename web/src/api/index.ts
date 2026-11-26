@@ -130,6 +130,8 @@ export interface Customer {
   payable: number
   received: number
   outstanding: number
+  open_payable: number
+  open_received: number
   created_at: string
 }
 

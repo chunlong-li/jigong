@@ -110,6 +110,8 @@ type Customer struct {
 	Payable     float64 `json:"payable"`
 	Received    float64 `json:"received"`
 	Outstanding float64 `json:"outstanding"`
+	OpenPayable float64 `json:"open_payable"`
+	OpenReceived float64 `json:"open_received"`
 	CreatedAt   string  `json:"created_at"`
 }
 

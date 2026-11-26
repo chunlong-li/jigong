@@ -16,8 +16,8 @@
         <span>客户数：<b>{{ list.length }}</b></span>
         <span>未结款合计：<b class="money warn">¥ {{ money(totalOutstanding) }}</b></span>
         <span>未结单数：<b>{{ totalOpen }}</b></span>
-        <span>累计应付：<span class="money">¥ {{ money(totalPayable) }}</span></span>
-        <span>累计实收：<span class="money pos">¥ {{ money(totalReceived) }}</span></span>
+        <span>未结应付：<span class="money">¥ {{ money(totalOpenPayable) }}</span></span>
+        <span>未结实收：<span class="money pos">¥ {{ money(totalOpenReceived) }}</span></span>
       </div>
 
       <el-table :data="list" v-loading="loading" empty-text="还没有客户，点右上角新增">
@@ -40,11 +40,11 @@
             <span v-else class="muted">0</span>
           </template>
         </el-table-column>
-        <el-table-column label="应付" width="110" align="right">
-          <template #default="{ row }">{{ money(row.payable) }}</template>
+        <el-table-column label="未结应付" width="115" align="right">
+          <template #default="{ row }">{{ money(row.open_payable) }}</template>
         </el-table-column>
-        <el-table-column label="实收" width="110" align="right">
-          <template #default="{ row }">{{ money(row.received) }}</template>
+        <el-table-column label="未结实收" width="115" align="right">
+          <template #default="{ row }">{{ money(row.open_received) }}</template>
         </el-table-column>
         <el-table-column label="未结款" width="120" align="right">
           <template #default="{ row }">
@@ -101,6 +101,11 @@
     <el-dialog v-model="receiveDialog" title="登记已收（收款）" width="460px">
       <el-descriptions :column="1" border size="small" style="margin-bottom: 14px">
         <el-descriptions-item label="客户">{{ receiveRow?.name }}</el-descriptions-item>
+        <el-descriptions-item label="未结应付 / 已收">
+          <span class="money">¥ {{ money(receiveRow?.open_payable) }}</span>
+          <span class="muted"> / </span>
+          <span class="money pos">¥ {{ money(receiveRow?.open_received) }}</span>
+        </el-descriptions-item>
         <el-descriptions-item label="当前未结款">
           <span class="money warn">¥ {{ money(receiveRow?.outstanding) }}</span>
         </el-descriptions-item>
@@ -159,8 +164,8 @@ const form = reactive<Partial<Customer>>({
 const categories = computed(() => [...new Set(list.value.map((c) => c.category).filter(Boolean))])
 const totalOutstanding = computed(() => Number(list.value.reduce((s, c) => s + (c.outstanding || 0), 0).toFixed(2)))
 const totalOpen = computed(() => list.value.reduce((s, c) => s + (c.open_count || 0), 0))
-const totalPayable = computed(() => Number(list.value.reduce((s, c) => s + (c.payable || 0), 0).toFixed(2)))
-const totalReceived = computed(() => Number(list.value.reduce((s, c) => s + (c.received || 0), 0).toFixed(2)))
+const totalOpenPayable = computed(() => Number(list.value.reduce((s, c) => s + (c.open_payable || 0), 0).toFixed(2)))
+const totalOpenReceived = computed(() => Number(list.value.reduce((s, c) => s + (c.open_received || 0), 0).toFixed(2)))
 
 async function load() {
   loading.value = true

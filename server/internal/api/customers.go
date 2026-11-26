@@ -12,13 +12,16 @@ func (s *Server) listCustomers(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(`
 		SELECT c.id, c.name, c.category, c.contact, c.phone, c.address, c.remark, c.created_at,
 		       COALESCE(st.cnt, 0), COALESCE(st.payable, 0), COALESCE(st.received, 0),
-		       COALESCE(st.open_cnt, 0), COALESCE(st.open_left, 0)
+		       COALESCE(st.open_cnt, 0), COALESCE(st.open_left, 0),
+		       COALESCE(st.open_payable, 0), COALESCE(st.open_received, 0)
 		FROM customers c
 		LEFT JOIN (
 			SELECT customer_id, COUNT(*) AS cnt,
 			       SUM(payable) AS payable, SUM(received) AS received,
 			       SUM(CASE WHEN COALESCE(settled,0) = 0 THEN 1 ELSE 0 END) AS open_cnt,
-			       SUM(CASE WHEN COALESCE(settled,0) = 0 THEN payable - received ELSE 0 END) AS open_left
+			       SUM(CASE WHEN COALESCE(settled,0) = 0 THEN payable - received ELSE 0 END) AS open_left,
+			       SUM(CASE WHEN COALESCE(settled,0) = 0 THEN payable ELSE 0 END) AS open_payable,
+			       SUM(CASE WHEN COALESCE(settled,0) = 0 THEN received ELSE 0 END) AS open_received
 			FROM settlements
 			WHERE COALESCE(customer_id, 0) > 0
 			GROUP BY customer_id
@@ -34,11 +37,14 @@ func (s *Server) listCustomers(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var x Customer
 		if err := rows.Scan(&x.ID, &x.Name, &x.Category, &x.Contact, &x.Phone, &x.Address, &x.Remark,
-			&x.CreatedAt, &x.SettleCount, &x.Payable, &x.Received, &x.OpenCount, &x.Outstanding); err != nil {
+			&x.CreatedAt, &x.SettleCount, &x.Payable, &x.Received, &x.OpenCount, &x.Outstanding,
+			&x.OpenPayable, &x.OpenReceived); err != nil {
 			fail(w, 500, err.Error())
 			return
 		}
 		x.Outstanding = round2(x.Outstanding)
+		x.OpenPayable = round2(x.OpenPayable)
+		x.OpenReceived = round2(x.OpenReceived)
 		out = append(out, x)
 	}
 	writeJSON(w, 200, out)
